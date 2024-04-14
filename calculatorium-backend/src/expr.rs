@@ -1,70 +1,51 @@
-use crate::{
-    latex::{
-        expr::LaTexExpression,
-        symbols::{CURLY_BRACKET_L, CURLY_BRACKET_R},
-        Position,
-    },
-    utils::BracketStack,
-    DecimalScalar, IntegerScalar,
-};
+use std::fmt::Debug;
 
-pub trait FromExpr {
-    fn parse(expr: &str) -> Option<Self>
+use crate::{latex::expr::LaTexExpression, sub_expr, DecimalScalar, IntegerScalar};
+
+pub trait FromRawExpr {
+    fn parse_raw(expr: &str) -> Option<Self>
     where
         Self: Sized;
 }
 
-#[derive(Debug, Clone)]
+pub trait FromExprs {
+    fn convert(exprs: Vec<LaTexExpression>) -> Self
+    where
+        Self: Sized;
+}
+
+pub trait Function: Debug {
+    fn evaluate(&self) -> LaTexExpression;
+}
+
+#[derive(Debug)]
 pub struct Fraction {
     num: LaTexExpression,
     den: LaTexExpression,
 }
 
-impl FromExpr for Fraction {
-    /// Parse `{a}/{b}`
-    fn parse(expr: &str) -> Option<Self> {
-        let mut num_expr = String::default();
-        let mut den_expr = String::default();
-        let mut stack = BracketStack::default();
-
-        for c in expr.chars() {
-            match &c {
-                &CURLY_BRACKET_L => stack.push(Position::Left),
-                &CURLY_BRACKET_R => stack.push(Position::Right),
-                _ => match stack.depth() {
-                    1 => num_expr.push(c),
-                    2 => den_expr.push(c),
-                    _ => return None,
-                },
-            }
-        }
-
-        let frac = (
-            LaTexExpression::parse(&num_expr),
-            LaTexExpression::parse(&den_expr),
-        );
-
-        if let (Some(num), Some(den)) = frac {
-            Some(Self { num, den })
-        } else {
-            None
+impl FromExprs for Fraction {
+    fn convert(mut exprs: Vec<LaTexExpression>) -> Self {
+        Self {
+            num: sub_expr!(exprs, 0),
+            den: sub_expr!(exprs, 1),
         }
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Scalar {
+pub enum RealNumber {
     Integer(IntegerScalar),
     Decimal(DecimalScalar),
 }
 
-impl FromExpr for Scalar {
+impl FromRawExpr for RealNumber {
     /// Parse `123` `1.024`
-    fn parse(expr: &str) -> Option<Self> {
+    fn parse_raw(expr: &str) -> Option<Self> {
         if expr.is_empty() {
             return None;
         }
-        
+
         if let Ok(i) = expr.parse::<IntegerScalar>() {
             Some(Self::Integer(i))
         } else {
@@ -79,8 +60,11 @@ mod test {
 
     #[test]
     fn test_scalar_parser() {
-        assert_eq!(Scalar::parse("123"), Some(Scalar::Integer(123)));
-        assert_eq!(Scalar::parse("1.024"), Some(Scalar::Decimal(1.024)));
-        assert_eq!(Scalar::parse("abc"), None);
+        assert_eq!(RealNumber::parse_raw("123"), Some(RealNumber::Integer(123)));
+        assert_eq!(
+            RealNumber::parse_raw("1.024"),
+            Some(RealNumber::Decimal(1.024))
+        );
+        assert_eq!(RealNumber::parse_raw("abc"), None);
     }
 }

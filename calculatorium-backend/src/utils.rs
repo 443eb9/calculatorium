@@ -1,17 +1,17 @@
-use crate::latex::Position;
+use crate::latex::BracketState;
 
 #[derive(Debug, Default)]
 pub struct BracketStack {
-    stack: Vec<Position>,
-    depth: u32,
+    stack: Vec<BracketState>,
+    depth: i32,
 }
 
 impl BracketStack {
     #[inline]
-    pub fn push(&mut self, bracket: Position) {
+    pub fn push(&mut self, bracket: BracketState) {
         match bracket {
-            Position::Left => self.depth += 1,
-            Position::Right => self.depth -= 1,
+            BracketState::Open => self.depth += 1,
+            BracketState::Close => self.depth -= 1,
         }
         self.stack.push(bracket);
     }
@@ -20,16 +20,35 @@ impl BracketStack {
     pub fn pop(&mut self) {
         if let Some(bracket) = self.stack.pop() {
             match bracket {
-                Position::Left => self.depth -= 1,
-                Position::Right => self.depth += 1,
+                BracketState::Open => self.depth -= 1,
+                BracketState::Close => self.depth += 1,
             }
         }
     }
 
     #[inline]
-    pub fn depth(&self) -> u32 {
+    pub fn depth(&self) -> i32 {
         self.depth
     }
+
+    #[inline]
+    pub fn is_valid(&self) -> bool {
+        self.depth >= 0
+    }
+}
+
+#[macro_export]
+macro_rules! sub_expr {
+    ($exprs: expr, $nth: expr) => {
+        std::mem::replace(&mut $exprs[$nth], LaTexExpression::default())
+    };
+}
+
+#[macro_export]
+macro_rules! take_elem_in_expr {
+    ($expr: expr, $nth: expr) => {
+        std::mem::replace(&mut $expr[$nth], LaTexElement::default())
+    };
 }
 
 #[cfg(test)]
@@ -39,13 +58,13 @@ mod test {
     #[test]
     fn test_stack() {
         let mut stack = BracketStack::default();
-        stack.push(Position::Left);
+        stack.push(BracketState::Open);
         assert_eq!(stack.depth(), 1);
-        stack.push(Position::Left);
+        stack.push(BracketState::Open);
         assert_eq!(stack.depth(), 2);
-        stack.push(Position::Right);
+        stack.push(BracketState::Close);
         assert_eq!(stack.depth(), 1);
-        stack.push(Position::Left);
+        stack.push(BracketState::Open);
         assert_eq!(stack.depth(), 2);
         stack.pop();
         assert_eq!(stack.depth(), 1);
