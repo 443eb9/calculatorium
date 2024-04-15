@@ -2,15 +2,18 @@ use std::fmt::Debug;
 
 use super::PhantomFunction;
 
-use crate::{expr::LaTexExpression, latex::LaTexElement};
+use crate::{
+    expr::LaTexExpression,
+    latex::{symbols::*, LaTexElement},
+};
 
 use calculatorium_macros::{FromExprs, PhantomFunction};
 
 macro_rules! define_get_phfuncs {
-    ($($func_name: expr, $func: ty),*) => {
-        pub fn get_phantom_function(name: &str) -> Option<Box<dyn PhantomFunction>> {
+    ($($func_name: pat, $func: ty),*) => {
+        pub fn get_phantom_function(name: &str, num_params: u32) -> Option<Box<dyn PhantomFunction>> {
             match name {
-                $($func_name => Some(Box::new(<$func>::default())),)*
+                $($func_name => Some(Box::new(<$func>::new(num_params))),)*
                 _ => None
             }
         }
@@ -38,8 +41,28 @@ macro_rules! define_function {
     };
 }
 
+define_function!(Add, lhs, rhs);
+define_function!(Subtract, lhs, rhs);
+define_function!(Multiply, lhs, rhs);
+define_function!(Divide, lhs, rhs);
+define_function!(Power, base, exp);
+
 define_function!(Fraction, num, den);
-define_get_phfuncs!("frac", PhantomFraction);
+define_function!(Root, rad, deg);
+define_function!(Logarithm, base, anti);
+
+#[rustfmt::skip]
+define_get_phfuncs!(
+    ADD, PhantomAdd,
+    SUBTRACT, PhantomSubtract,
+    MULTIPLY, PhantomMultiply,
+    DIVIDE, PhantomDivide,
+    SUPER_SCRIPT, PhantomPower,
+
+    FRACTION, PhantomFraction,
+    ROOT, PhantomRoot,
+    LOGARITHM, PhantomLogarithm
+);
 
 #[cfg(test)]
 mod test {

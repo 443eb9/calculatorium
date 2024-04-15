@@ -1,16 +1,13 @@
 use crate::{
     func::decl::{get_phantom_function, FromRawExpr},
-    latex::{
-        BracketState, LaTexElement, Operator, CURLY_BRACKET_L, CURLY_BRACKET_R, FUNC_BEGIN,
-        PARENTHESES_L, PARENTHESES_R,
-    },
+    latex::{symbols::*, BracketState, LaTexElement},
     symbol::RealNumber,
     utils::BracketStack,
 };
 
 #[derive(Debug, Default)]
 pub struct LaTexExpression {
-    raw: Vec<LaTexElement>,
+    expr: Vec<LaTexElement>,
 }
 
 impl FromRawExpr for LaTexExpression {
@@ -27,6 +24,7 @@ impl FromRawExpr for LaTexExpression {
 impl LaTexExpression {
     fn tokenize(expr: &str) -> Option<Self> {
         let mut symbols = Vec::new();
+
         let mut digit_start = -1;
         let mut sub_expr_start = -1;
         let mut sub_expr_start_depth = 0;
@@ -66,7 +64,7 @@ impl LaTexExpression {
             // Functions
             if func_def_start != -1 {
                 if c == CURLY_BRACKET_L {
-                    if let Some(ph_func) = get_phantom_function(&expr[func_def_start as usize..i]) {
+                    if let Some(ph_func) = get_phantom_function(&expr[func_def_start as usize..i], todo!()) {
                         symbols.push(LaTexElement::PhantomFunction(ph_func));
                         func_def_start = -1;
                     } else {
@@ -109,8 +107,13 @@ impl LaTexExpression {
             }
 
             // Operators
-            if let Some(op) = Operator::parse_raw(&c.to_string()) {
-                symbols.push(LaTexElement::Operator(op));
+            if matches!(
+                c.to_string().as_str(),
+                ADD | SUBTRACT | MULTIPLY | DIVIDE | SUPER_SCRIPT
+            ) {
+                symbols.push(LaTexElement::PhantomFunction(
+                    get_phantom_function(c.to_string().as_str(), todo!()).unwrap(),
+                ));
                 continue;
             }
 
@@ -135,11 +138,18 @@ impl LaTexExpression {
             }
         }
 
-        Some(Self { raw: symbols })
+        Some(Self { expr: symbols })
     }
 
-    fn parse(mut expr: Self) -> Option<Self> {
+    fn parse(expr: Self) -> Option<Self> {
         Some(expr)
+    }
+}
+
+impl LaTexExpression {
+    #[inline]
+    pub fn expr(&self) -> &[LaTexElement] {
+        &self.expr
     }
 }
 
@@ -157,7 +167,7 @@ mod test {
     #[test]
     fn test_expr_parser_func() {
         dbg!(LaTexExpression::parse_raw(
-            r#"5+\frac{2^5+\frac{1}{2}}{3}+5*3"#
+            r#"5+\frac{2^5+\frac{1}{2}+\sqrt{2}{4}}{3}+5*3"#
         ));
     }
 }
