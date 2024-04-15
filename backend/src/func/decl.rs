@@ -49,9 +49,14 @@ define_function!(Power, base, exp);
 
 define_function!(Fraction, num, den);
 define_function!(Root, rad, deg);
+
 define_function!(Log, base, anti);
 define_function!(Lg, anti);
 define_function!(Ln, anti);
+
+define_function!(Sin, x);
+define_function!(Cos, x);
+define_function!(Tan, x);
 
 #[rustfmt::skip]
 define_get_phfuncs!(
@@ -66,7 +71,11 @@ define_get_phfuncs!(
     
     LOG, PhantomLog, 2,
     LG, PhantomLg, 1,
-    LN, PhantomLn, 1
+    LN, PhantomLn, 1,
+
+    SIN, PhantomSin, 1,
+    COS, PhantomCos, 1,
+    TAN, PhantomTan, 1
 );
 
 #[cfg(test)]

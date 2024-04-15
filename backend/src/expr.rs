@@ -177,4 +177,11 @@ mod test {
             r#"1/\frac{\lg_{5}}{\log_{3}{8}}^5+\ln_{\sqrt{2}}"#
         ));
     }
+
+    #[test]
+    fn test_expr_parser_func3() {
+        dbg!(LaTexExpression::parse_raw(
+            r#"\sin{\sqrt{3}}"# 
+        ));
+    }
 }

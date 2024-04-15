@@ -42,5 +42,9 @@ define_latex_elements!(
     
     Log, Log,
     Lg, Lg,
-    Ln, Ln
+    Ln, Ln,
+
+    Sin, Sin,
+    Cos, Cos,
+    Tan, Tan
 );
