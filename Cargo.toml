@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "calculatorium-backend",
+    "hmer"
+]
+resolver = "2"

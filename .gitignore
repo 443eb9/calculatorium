@@ -1,2 +1,5 @@
-/**/target
-/**/Cargo.lock
+/target
+/Cargo.lock
+
+# IDE mellicous
+/.idea
