@@ -27,9 +27,9 @@ impl FromRawExpr for LaTexExpression {
         let mut symbols = Vec::new();
         let mut digit_buffer = String::new();
         let mut sub_expr_start = -1;
+        let mut sub_expr_start_depth = 0;
         let mut func_start = -1;
-        let mut func_num_params = -1;
-        let mut func_param_buffer = Vec::new();
+
         let mut curly_brackets = BracketStack::default();
         let mut parentheses = BracketStack::default();
 
@@ -46,46 +46,43 @@ impl FromRawExpr for LaTexExpression {
                 return None;
             }
 
+            // Sub Expressions
+            if sub_expr_start != -1 {
+                if c == CURLY_BRACKET_R && curly_brackets.depth() == sub_expr_start_depth {
+                    if let Some(sub_expr) =
+                        LaTexExpression::parse_raw(&expr[sub_expr_start as usize..i])
+                    {
+                        symbols.push(LaTexElement::Expression(sub_expr));
+                        sub_expr_start = -1;
+                    } else {
+                        return None;
+                    }
+                }
+                continue;
+            }
+
             // Functions
             if func_start != -1 {
                 if c == CURLY_BRACKET_L {
                     if let Some(ph_func) = get_phantom_function(&expr[func_start as usize..i]) {
                         symbols.push(LaTexElement::PhantomFunction(ph_func));
+                        func_start = -1;
                     } else {
                         return None;
                     }
-                    func_start = -1;
                 } else {
                     continue;
                 }
             }
 
-            if c == FUNC_BEGIN {
-                func_start = i as i32 + 1;
-                continue;
-            }
-
-            // Sub Expressions
-            if sub_expr_start != -1 {
-                if c == CURLY_BRACKET_R {
-                    if let Some(sub_expr) =
-                        LaTexExpression::parse_raw(&expr[sub_expr_start as usize..i])
-                    {
-                        if func_num_params != -1 {
-                            func_param_buffer.push(sub_expr);
-                        } else {
-                            symbols.push(LaTexElement::Expression(sub_expr));
-                        }
-                    } else {
-                        return None;
-                    }
-                    sub_expr_start = -1;
-                }
-                continue;
-            }
-
             if c == CURLY_BRACKET_L {
                 sub_expr_start = i as i32 + 1;
+                sub_expr_start_depth = curly_brackets.depth() - 1;
+                continue;
+            }
+
+            if c == FUNC_BEGIN {
+                func_start = i as i32 + 1;
                 continue;
             }
 
@@ -133,6 +130,8 @@ mod test {
 
     #[test]
     fn test_expr_parser_func() {
-        dbg!(LaTexExpression::parse_raw("\\frac{2}{3}"));
+        dbg!(LaTexExpression::parse_raw(
+            r#"5+\frac{2^5+\frac{1}{2}}{3}+5*3"#
+        ));
     }
 }
