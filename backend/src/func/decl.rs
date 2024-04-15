@@ -4,16 +4,16 @@ use super::PhantomFunction;
 
 use crate::{
     expr::LaTexExpression,
-    latex::{symbols::*, LaTexElement},
+    latex::{symbol::*, LaTexElement},
 };
 
 use calculatorium_macros::{FromExprs, PhantomFunction};
 
 macro_rules! define_get_phfuncs {
-    ($($func_name: pat, $func: ty),*) => {
-        pub fn get_phantom_function(name: &str, num_params: u32) -> Option<Box<dyn PhantomFunction>> {
+    ($($func_name: pat, $func: ty, $num_params: literal),*) => {
+        pub fn get_phantom_function(name: &str) -> Option<Box<dyn PhantomFunction>> {
             match name {
-                $($func_name => Some(Box::new(<$func>::new(num_params))),)*
+                $($func_name => Some(Box::new(<$func>::default())),)*
                 _ => None
             }
         }
@@ -49,19 +49,24 @@ define_function!(Power, base, exp);
 
 define_function!(Fraction, num, den);
 define_function!(Root, rad, deg);
-define_function!(Logarithm, base, anti);
+define_function!(Log, base, anti);
+define_function!(Lg, anti);
+define_function!(Ln, anti);
 
 #[rustfmt::skip]
 define_get_phfuncs!(
-    ADD, PhantomAdd,
-    SUBTRACT, PhantomSubtract,
-    MULTIPLY, PhantomMultiply,
-    DIVIDE, PhantomDivide,
-    SUPER_SCRIPT, PhantomPower,
+    ADD, PhantomAdd, 2,
+    SUBTRACT, PhantomSubtract, 2,
+    MULTIPLY, PhantomMultiply, 2,
+    DIVIDE, PhantomDivide, 2,
+    SUPER_SCRIPT, PhantomPower, 2,
 
-    FRACTION, PhantomFraction,
-    ROOT, PhantomRoot,
-    LOGARITHM, PhantomLogarithm
+    FRAC, PhantomFraction, 2,
+    ROOT, PhantomRoot, 2,
+    
+    LOG, PhantomLog, 2,
+    LG, PhantomLg, 1,
+    LN, PhantomLn, 1
 );
 
 #[cfg(test)]

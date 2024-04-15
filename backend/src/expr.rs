@@ -1,6 +1,6 @@
 use crate::{
     func::decl::{get_phantom_function, FromRawExpr},
-    latex::{symbols::*, BracketState, LaTexElement},
+    latex::{symbol::*, BracketState, LaTexElement},
     symbol::RealNumber,
     utils::BracketStack,
 };
@@ -64,7 +64,7 @@ impl LaTexExpression {
             // Functions
             if func_def_start != -1 {
                 if c == CURLY_BRACKET_L {
-                    if let Some(ph_func) = get_phantom_function(&expr[func_def_start as usize..i], todo!()) {
+                    if let Some(ph_func) = get_phantom_function(&expr[func_def_start as usize..i]) {
                         symbols.push(LaTexElement::PhantomFunction(ph_func));
                         func_def_start = -1;
                     } else {
@@ -112,7 +112,7 @@ impl LaTexExpression {
                 ADD | SUBTRACT | MULTIPLY | DIVIDE | SUPER_SCRIPT
             ) {
                 symbols.push(LaTexElement::PhantomFunction(
-                    get_phantom_function(c.to_string().as_str(), todo!()).unwrap(),
+                    get_phantom_function(c.to_string().as_str()).unwrap(),
                 ));
                 continue;
             }
@@ -165,9 +165,16 @@ mod test {
     }
 
     #[test]
-    fn test_expr_parser_func() {
+    fn test_expr_parser_func1() {
         dbg!(LaTexExpression::parse_raw(
             r#"5+\frac{2^5+\frac{1}{2}+\sqrt{2}{4}}{3}+5*3"#
+        ));
+    }
+
+    #[test]
+    fn test_expr_parser_func2() {
+        dbg!(LaTexExpression::parse_raw(
+            r#"1/\frac{\lg_{5}}{\log_{3}{8}}^5+\ln_{\sqrt{2}}"#
         ));
     }
 }

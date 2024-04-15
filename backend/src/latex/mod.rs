@@ -4,7 +4,7 @@ use crate::{
     symbol::RealNumber,
 };
 
-pub mod symbols;
+pub mod symbol;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BracketState {
@@ -39,5 +39,8 @@ define_latex_elements!(
 
     Fraction, Fraction,
     Root, Root,
-    Logarithm, Logarithm
+    
+    Log, Log,
+    Lg, Lg,
+    Ln, Ln
 );

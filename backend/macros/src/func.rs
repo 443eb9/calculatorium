@@ -43,28 +43,25 @@ pub fn expand_phantom_function_derive(input: syn::DeriveInput) -> proc_macro::To
     let ty = input.ident;
     let phty = syn::Ident::new(&format!("Phantom{}", ty), ty.span());
 
+    let syn::Data::Struct(data) = input.data else {
+        panic!()
+    };
+
+    let num_params = data.fields.len() as u32;
+
     quote::quote! {
-        #[derive(Debug)]
-        pub struct #phty {
-            num_params: u32,
-        }
+        #[derive(Debug, Default)]
+        pub struct #phty;
 
         impl PhantomFunction for #phty {
             #[inline]
             fn num_params(&self) -> u32 {
-                self.num_params
+                #num_params
             }
 
             #[inline]
             fn solidify(&self, params: Vec<LaTexExpression>) -> LaTexElement {
                 LaTexElement::#ty(<#ty>::convert(params))
-            }
-        }
-
-        impl #phty {
-            #[inline]
-            fn new(num_params: u32) -> Self {
-                Self { num_params }
             }
         }
     }
