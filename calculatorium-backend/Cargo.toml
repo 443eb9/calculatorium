@@ -1,4 +1,10 @@
+[workspace]
+members = ["macros"]
+
 [package]
-name = "calculatorium-backend"
+name = "calculatorium_backend"
 version = "0.1.0"
 edition = "2021"
+
+[dependencies]
+calculatorium_macros = { path = "macros", version = "0.1" }
