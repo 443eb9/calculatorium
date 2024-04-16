@@ -1,4 +1,4 @@
-# Calculatiorium
+# Calculatorium
 
 A cross-platform scientific calculator written in Rust(Backend and Handwriting recognition) and Dart(Frontend).
 

@@ -1,14 +1,26 @@
-use crate::{func::decl::FromRawExpr, DecimalScalar, IntegerScalar};
+use crate::{DecimalScalar, IntegerScalar};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum RealNumber {
-    Integer(IntegerScalar),
-    Decimal(DecimalScalar),
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BracketState {
+    Open,
+    Close,
 }
 
-impl FromRawExpr for RealNumber {
-    /// Parse `123` `1.024`
-    fn parse_raw(expr: &str) -> Option<Self> {
+#[derive(Debug, Clone, Copy)]
+pub enum MathSymbol {
+    Number(Number),
+    Parentheses(BracketState),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Number {
+    Integer(IntegerScalar),
+    Decimal(DecimalScalar),
+    // Virtual()
+}
+
+impl Number {
+    pub fn parse_raw(expr: &str) -> Option<Self> {
         if expr.is_empty() {
             return None;
         }

@@ -1,8 +1,7 @@
 pub mod api;
-pub mod expr;
 pub mod func;
 pub mod latex;
-pub mod symbol;
+pub mod math;
 pub mod utils;
 
 pub type DecimalScalar = f64;

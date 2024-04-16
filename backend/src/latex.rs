@@ -25,3 +25,7 @@ pub const ROOT: &str = "sqrt";
 pub const LOG: &str = "log_";
 pub const LG: &str = "lg_";
 pub const LN: &str = "ln_";
+
+pub const SIN: &str = "sin";
+pub const COS: &str = "cos";
+pub const TAN: &str = "tan";

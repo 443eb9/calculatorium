@@ -1,4 +1,4 @@
-pub fn expand_from_exprs_derive(input: syn::DeriveInput) -> proc_macro::TokenStream {
+pub fn expand_from_expr_derive(input: syn::DeriveInput) -> proc_macro::TokenStream {
     let ty = input.ident;
 
     let syn::Data::Struct(data) = input.data else {
@@ -12,20 +12,20 @@ pub fn expand_from_exprs_derive(input: syn::DeriveInput) -> proc_macro::TokenStr
         let field_name = field.ident.as_ref().unwrap();
 
         fields_ctons.push(quote::quote! {
-            #field_name: std::mem::replace(&mut exprs[#field_index], LaTexExpression::default()),
+            #field_name: expr[#field_index].take().unwrap(),
         });
 
         field_accessors.push(quote::quote! {
             #[inline]
-            pub fn #field_name(&self) -> &LaTexExpression {
+            pub fn #field_name(&self) -> &MathElement {
                 &self.#field_name
             }
         });
     }
 
     quote::quote! {
-        impl FromExprs for #ty {
-            fn convert(mut exprs: Vec<LaTexExpression>) -> Self {
+        impl FromExpr for #ty {
+            fn convert(mut expr: Vec<Option<MathElement>>) -> Self {
                 Self {
                     #(#fields_ctons)*
                 }
@@ -39,7 +39,7 @@ pub fn expand_from_exprs_derive(input: syn::DeriveInput) -> proc_macro::TokenStr
     .into()
 }
 
-pub fn expand_phantom_function_derive(input: syn::DeriveInput) -> proc_macro::TokenStream {
+pub fn expand_as_phantom_function_derive(input: syn::DeriveInput) -> proc_macro::TokenStream {
     let ty = input.ident;
     let phty = syn::Ident::new(&format!("Phantom{}", ty), ty.span());
 
@@ -60,8 +60,8 @@ pub fn expand_phantom_function_derive(input: syn::DeriveInput) -> proc_macro::To
             }
 
             #[inline]
-            fn solidify(&self, params: Vec<LaTexExpression>) -> LaTexElement {
-                LaTexElement::#ty(<#ty>::convert(params))
+            fn solidify(&self, params: Vec<Option<MathElement>>) -> MathFunction {
+                MathFunction::#ty(Box::new(<#ty>::convert(params)))
             }
         }
     }
