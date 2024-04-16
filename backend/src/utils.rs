@@ -1,4 +1,4 @@
-use crate::latex::BracketState;
+use crate::math::symbol::BracketState;
 
 #[derive(Debug, Default)]
 pub struct BracketStack {
