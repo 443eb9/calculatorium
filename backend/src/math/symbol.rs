@@ -1,4 +1,4 @@
-use crate::{func::decl::FromRawExpr, DecimalScalar, IntegerScalar};
+use crate::{DecimalScalar, IntegerScalar};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BracketState {
@@ -19,8 +19,8 @@ pub enum Number {
     // Virtual()
 }
 
-impl FromRawExpr for Number {
-    fn parse_raw(expr: &str) -> Option<Self> {
+impl Number {
+    pub fn parse_raw(expr: &str) -> Option<Self> {
         if expr.is_empty() {
             return None;
         }

@@ -5,7 +5,10 @@ use crate::{
     utils::BracketStack,
 };
 
-use super::{symbol::MathSymbol, ExpressionElement};
+use super::{
+    symbol::MathSymbol, ExpressionElement, LaTexParsingError, LaTexParsingErrorType,
+    LaTexParsingResult,
+};
 
 #[derive(Debug)]
 pub struct ExpressionBuffer {
@@ -13,7 +16,7 @@ pub struct ExpressionBuffer {
 }
 
 impl FromRawExpr for ExpressionBuffer {
-    fn parse_raw(expr: &str) -> Option<Self> {
+    fn parse_raw(expr: &str) -> LaTexParsingResult<Self> {
         let mut expr_buffer = Vec::new();
 
         let mut digit_start = -1;
@@ -36,7 +39,10 @@ impl FromRawExpr for ExpressionBuffer {
             };
 
             if !curly_brackets.is_valid() || !parentheses.is_valid() {
-                return None;
+                return Err(LaTexParsingError::new(
+                    i as u32,
+                    LaTexParsingErrorType::InvalidBracketStructure,
+                ));
             }
 
             // Function Sub Expressions
@@ -44,13 +50,14 @@ impl FromRawExpr for ExpressionBuffer {
                 && c == CURLY_BRACKET_R
                 && curly_brackets.depth() == func_sub_expr_start_depth
             {
-                if let Some(sub_expr) =
-                    ExpressionBuffer::parse_raw(&expr[func_sub_expr_start as usize..i])
-                {
-                    expr_buffer.push(ExpressionElement::Expression(sub_expr));
-                    func_sub_expr_start = -1;
-                    continue;
-                }
+                expr_buffer.push(ExpressionElement::Expression(
+                    ExpressionBuffer::parse_raw_with_base_index(
+                        &expr[func_sub_expr_start as usize..i],
+                        func_sub_expr_start as u32,
+                    )?,
+                ));
+                func_sub_expr_start = -1;
+                continue;
             }
 
             // User Sub Expressions
@@ -58,23 +65,29 @@ impl FromRawExpr for ExpressionBuffer {
                 && c == PARENTHESES_R
                 && parentheses.depth() == user_sub_expr_start_depth
             {
-                if let Some(sub_expr) =
-                    ExpressionBuffer::parse_raw(&expr[user_sub_expr_start as usize..i])
-                {
-                    expr_buffer.push(ExpressionElement::Expression(sub_expr));
-                    user_sub_expr_start = -1;
-                    continue;
-                }
+                expr_buffer.push(ExpressionElement::Expression(
+                    ExpressionBuffer::parse_raw_with_base_index(
+                        &expr[user_sub_expr_start as usize..i],
+                        user_sub_expr_start as u32,
+                    )?,
+                ));
+                user_sub_expr_start = -1;
+                continue;
             }
 
             // Functions
             if func_def_start != -1 && c == CURLY_BRACKET_L {
-                if let Some(ph_func) = get_phantom_function(&expr[func_def_start as usize..i]) {
-                    expr_buffer.push(ExpressionElement::Function(MathFunction::Phantom(ph_func)));
-                    func_def_start = -1;
-                } else {
-                    return None;
-                }
+                expr_buffer.push(ExpressionElement::Function(MathFunction::Phantom(
+                    get_phantom_function(&expr[func_def_start as usize..i]).ok_or_else(|| {
+                        LaTexParsingError::new(
+                            func_def_start as u32 - 1,
+                            LaTexParsingErrorType::InvalidFunctionName(
+                                (&expr[func_def_start as usize..i]).to_string(),
+                            ),
+                        )
+                    })?,
+                )));
+                func_def_start = -1;
             }
 
             if func_sub_expr_start != -1 || user_sub_expr_start != -1 || func_def_start != -1 {
@@ -135,18 +148,24 @@ impl FromRawExpr for ExpressionBuffer {
                 continue;
             }
 
-            return None;
+            return Err(LaTexParsingError::new(
+                i as u32,
+                LaTexParsingErrorType::Unknown,
+            ));
         }
 
         if digit_start != -1 {
             if let Some(scalar) = Number::parse_raw(&expr[digit_start as usize..]) {
                 expr_buffer.push(ExpressionElement::Symbol(MathSymbol::Number(scalar)));
             } else {
-                return None;
+                return Err(LaTexParsingError::new(
+                    digit_start as u32,
+                    LaTexParsingErrorType::InvalidNumber(expr[digit_start as usize..].to_string()),
+                ));
             }
         }
 
-        Some(Self { expr: expr_buffer })
+        Ok(Self { expr: expr_buffer })
     }
 }
 
@@ -157,11 +176,8 @@ pub struct LaTexExpression {
 
 impl FromRawExpr for LaTexExpression {
     /// Full-featured LaTex parser.
-    fn parse_raw(expr: &str) -> Option<Self> {
-        if expr.is_empty() {
-            return None;
-        }
-        None
+    fn parse_raw(expr: &str) -> LaTexParsingResult<Self> {
+        todo!()
     }
 }
 
@@ -172,27 +188,35 @@ mod test {
     #[test]
     fn test_expr_parser_simple() {
         // r#"15*16+2-9^2/3^{19+2.3}+(5.3+1)"#
-        dbg!(ExpressionBuffer::parse_raw(
-            r#"15*16+2-9^2/3^{19-(-5+1)+2.3}+(5.3+1)"#
-        ));
+        dbg!(ExpressionBuffer::parse_raw(r#"15*16+2-9^2/3^{19-(-5+1)+2.3}+(5.3+1)"#).unwrap());
     }
 
     #[test]
     fn test_expr_parser_func1() {
-        dbg!(ExpressionBuffer::parse_raw(
-            r#"5+\frac{2^5+\frac{1}{2}+\sqrt{2}{4}}{3}+5*3"#
-        ));
+        dbg!(
+            ExpressionBuffer::parse_raw(r#"5+\frac{2^5+\frac{1}{2}+\sqrt{2}{4}}{3}+5*3"#).unwrap()
+        );
     }
 
     #[test]
     fn test_expr_parser_func2() {
-        dbg!(ExpressionBuffer::parse_raw(
-            r#"1/\frac{\lg_{5}}{\log_{3}{8}}^5+\ln_{\sqrt{2}}"#
-        ));
+        dbg!(
+            ExpressionBuffer::parse_raw(r#"1/\frac{\lg_{5}}{\log_{3}{8}}^5+\ln_{\sqrt{2}}"#)
+                .unwrap()
+        );
     }
 
     #[test]
     fn test_expr_parser_func3() {
-        dbg!(ExpressionBuffer::parse_raw(r#"\sin{\sqrt{3}}"#));
+        dbg!(ExpressionBuffer::parse_raw(r#"\sin{\sqrt{3}}"#).unwrap());
+    }
+
+    #[test]
+    fn test_parsing_err() {
+        // let _ = dbg!(ExpressionBuffer::parse_raw(r#"{}())()"#));
+        // let _ = dbg!(ExpressionBuffer::parse_raw(r#"2_3*6"#));
+        // let _ = dbg!(ExpressionBuffer::parse_raw(r#"2-\frad{3}{4}"#));
+        // let _ = dbg!(ExpressionBuffer::parse_raw(r#"1+3."#));
+        let _ = dbg!(ExpressionBuffer::parse_raw(r#"2+(5/9.)"#));
     }
 }

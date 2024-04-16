@@ -2,18 +2,28 @@ use std::fmt::Debug;
 
 use super::PhantomFunction;
 
-use crate::{latex::*, math::MathElement};
+use crate::{
+    latex::*,
+    math::{LaTexParsingError, LaTexParsingResult, MathElement},
+};
 
-use calculatorium_macros::{AsPhantomFunction, FromExprs};
+use calculatorium_macros::{AsPhantomFunction, FromExpr};
 
 pub trait FromRawExpr {
-    fn parse_raw(expr: &str) -> Option<Self>
+    fn parse_raw(expr: &str) -> LaTexParsingResult<Self>
     where
         Self: Sized;
+
+    fn parse_raw_with_base_index(expr: &str, base: u32) -> LaTexParsingResult<Self>
+    where
+        Self: Sized,
+    {
+        Self::parse_raw(expr).map_err(|e| LaTexParsingError::new(e.at + base, e.ty))
+    }
 }
 
-pub trait FromExprs {
-    fn convert(exprs: Vec<Option<MathElement>>) -> Self
+pub trait FromExpr {
+    fn convert(expr: Vec<Option<MathElement>>) -> Self
     where
         Self: Sized;
 }
@@ -38,7 +48,7 @@ macro_rules! register_functions {
 
 macro_rules! define_function {
     ($fn_ty: ident, $($field: ident),*) => {
-        #[derive(Debug, FromExprs, AsPhantomFunction)]
+        #[derive(Debug, FromExpr, AsPhantomFunction)]
         pub struct $fn_ty {
             $($field: MathElement,)*
         }
@@ -85,8 +95,6 @@ register_functions!(
 #[cfg(test)]
 mod test {
     use crate::math::symbol::Number;
-
-    use super::*;
 
     #[test]
     fn test_scalar_parser() {

@@ -1,9 +1,12 @@
 #![allow(unused)]
 //! General apis for other projects to invoke.
 
-use crate::{math::expr::LaTexExpression, func::decl::FromRawExpr};
+use crate::{
+    func::decl::FromRawExpr,
+    math::{expr::LaTexExpression, LaTexParsingResult},
+};
 
-pub fn parse(expr: &str) -> Option<LaTexExpression> {
+pub fn parse(expr: &str) -> LaTexParsingResult<LaTexExpression> {
     LaTexExpression::parse_raw(expr)
 }
 

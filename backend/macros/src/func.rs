@@ -1,4 +1,4 @@
-pub fn expand_from_exprs_derive(input: syn::DeriveInput) -> proc_macro::TokenStream {
+pub fn expand_from_expr_derive(input: syn::DeriveInput) -> proc_macro::TokenStream {
     let ty = input.ident;
 
     let syn::Data::Struct(data) = input.data else {
@@ -12,7 +12,7 @@ pub fn expand_from_exprs_derive(input: syn::DeriveInput) -> proc_macro::TokenStr
         let field_name = field.ident.as_ref().unwrap();
 
         fields_ctons.push(quote::quote! {
-            #field_name: exprs[#field_index].take().unwrap(),
+            #field_name: expr[#field_index].take().unwrap(),
         });
 
         field_accessors.push(quote::quote! {
@@ -24,8 +24,8 @@ pub fn expand_from_exprs_derive(input: syn::DeriveInput) -> proc_macro::TokenStr
     }
 
     quote::quote! {
-        impl FromExprs for #ty {
-            fn convert(mut exprs: Vec<Option<MathElement>>) -> Self {
+        impl FromExpr for #ty {
+            fn convert(mut expr: Vec<Option<MathElement>>) -> Self {
                 Self {
                     #(#fields_ctons)*
                 }
