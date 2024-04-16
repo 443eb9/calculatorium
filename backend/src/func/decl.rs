@@ -7,7 +7,7 @@ use crate::{
     math::{LaTexParsingError, LaTexParsingResult, MathElement},
 };
 
-use calculatorium_macros::{AsPhantomFunction, FromExpr};
+use calculatorium_macros::{AsPhantomFunction, FromExpr, IntoRawExpr};
 
 pub trait FromRawExpr {
     fn parse_raw(expr: &str) -> LaTexParsingResult<Self>
@@ -20,6 +20,18 @@ pub trait FromRawExpr {
     {
         Self::parse_raw(expr).map_err(|e| LaTexParsingError::new(e.at + base, e.ty))
     }
+}
+
+pub trait IntoRawExpr {
+    fn assemble(&self) -> String;
+}
+
+pub trait Prioritizable {
+    /// The higher, the earlier it is evaluated.
+    /// - Add/Subtract/Binary/Modulo Operations 1
+    /// - Multiply/Divide 5
+    /// - Functions (Power, Log, Sin etc) 10
+    fn priority(&self) -> u32;
 }
 
 pub trait FromExpr {
@@ -37,6 +49,16 @@ macro_rules! register_functions {
             Phantom(Box<dyn PhantomFunction>),
         }
 
+        impl IntoRawExpr for MathFunction {
+            fn assemble(&self) -> String {
+                match self {
+                    $(Self::$fn_ident(f) => f.assemble(),)*
+
+                    Self::Phantom(f) => f.assemble(),
+                }
+            }
+        }
+
         pub fn get_phantom_function(name: &str) -> Option<Box<dyn PhantomFunction>> {
             match name {
                 $($fn_name => Some(Box::new(<$phfn_ty>::default())),)*
@@ -46,31 +68,78 @@ macro_rules! register_functions {
     };
 }
 
-macro_rules! define_function {
-    ($fn_ty: ident, $($field: ident),*) => {
+macro_rules! define_operator {
+    ($op_ty: ident, $op_name: expr, $($field: ident),*) => {
         #[derive(Debug, FromExpr, AsPhantomFunction)]
-        pub struct $fn_ty {
+        pub struct $op_ty {
             $($field: MathElement,)*
+        }
+
+        impl $op_ty {
+            pub const LATEX_SYMBOL: &'static str = $op_name;
         }
     };
 }
 
-define_function!(Add, lhs, rhs);
-define_function!(Subtract, lhs, rhs);
-define_function!(Multiply, lhs, rhs);
-define_function!(Divide, lhs, rhs);
-define_function!(Power, base, exp);
+macro_rules! define_function {
+    ($fn_ty: ident, $fn_name: expr, $($field: ident),*) => {
+        #[derive(Debug, FromExpr, IntoRawExpr, AsPhantomFunction)]
+        pub struct $fn_ty {
+            $($field: MathElement,)*
+        }
 
-define_function!(Fraction, num, den);
-define_function!(Root, rad, deg);
+        impl $fn_ty {
+            pub const LATEX_SYMBOL: &'static str = $fn_name;
+        }
+    };
+}
 
-define_function!(Log, base, anti);
-define_function!(Lg, anti);
-define_function!(Ln, anti);
+macro_rules! impl_into_raw_expr_op {
+    ($op_ty: ident, $symbol: expr) => {
+        impl IntoRawExpr for $op_ty {
+            fn assemble(&self) -> String {
+                if self.lhs.priority() < self.priority() {
+                    format!(
+                        "{}{}({})",
+                        self.rhs.assemble(),
+                        $symbol,
+                        self.lhs.assemble()
+                    )
+                } else {
+                    format!("{}{}{}", self.lhs.assemble(), $symbol, self.rhs.assemble())
+                }
+            }
+        }
+    };
+}
 
-define_function!(Sin, x);
-define_function!(Cos, x);
-define_function!(Tan, x);
+impl IntoRawExpr for Power {
+    fn assemble(&self) -> String {
+        format!("{}^{{{}}}", self.base.assemble(), self.exp.assemble())
+    }
+}
+
+define_operator!(Add, ADD, lhs, rhs);
+define_operator!(Subtract, SUBTRACT, lhs, rhs);
+define_operator!(Multiply, MULTIPLY, lhs, rhs);
+define_operator!(Divide, DIVIDE, lhs, rhs);
+define_operator!(Power, SUPER_SCRIPT, base, exp);
+
+impl_into_raw_expr_op!(Add, ADD);
+impl_into_raw_expr_op!(Subtract, SUBTRACT);
+impl_into_raw_expr_op!(Multiply, MULTIPLY);
+impl_into_raw_expr_op!(Divide, DIVIDE);
+
+define_function!(Fraction, FRAC, num, den);
+define_function!(Root, ROOT, rad, deg);
+
+define_function!(Log, LOG, base, anti);
+define_function!(Lg, LG, anti);
+define_function!(Ln, LN, anti);
+
+define_function!(Sin, SIN, x);
+define_function!(Cos, COS, x);
+define_function!(Tan, TAN, x);
 
 #[rustfmt::skip]
 register_functions!(
@@ -91,3 +160,44 @@ register_functions!(
     COS, Cos, Cos, PhantomCos, 1,
     TAN, Tan, Tan, PhantomTan, 1
 );
+
+#[cfg(test)]
+mod test {
+    use crate::math::symbol::Number;
+
+    use super::*;
+
+    #[test]
+    fn test_into_raw_expr() {
+        assert_eq!(
+            Add {
+                lhs: MathElement::Number(Number::Integer(1)),
+                rhs: MathElement::Function(Box::new(Subtract {
+                    lhs: MathElement::Number(Number::Integer(2)),
+                    rhs: MathElement::Number(Number::Decimal(3.8))
+                })),
+            }
+            .assemble(),
+            "1+2-3.8"
+        );
+
+        // When the operator precedence of the lhs is lower than itself,
+        // wrap the contents of the lhs with parentheses and place it on the right side.
+        assert_eq!(
+            Fraction {
+                num: MathElement::Function(Box::new(Sin {
+                    x: MathElement::Number(Number::Integer(3))
+                })),
+                den: MathElement::Function(Box::new(Multiply {
+                    lhs: MathElement::Function(Box::new(Add {
+                        lhs: MathElement::Number(Number::Integer(5)),
+                        rhs: MathElement::Number(Number::Integer(7))
+                    })),
+                    rhs: MathElement::Number(Number::Decimal(6.5)),
+                })),
+            }
+            .assemble(),
+            "\\frac{\\sin{3}}{6.5*(5+7)}"
+        );
+    }
+}

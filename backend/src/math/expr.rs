@@ -1,14 +1,11 @@
 use crate::{
-    func::decl::{get_phantom_function, FromRawExpr, MathFunction},
+    func::decl::{get_phantom_function, FromRawExpr, IntoRawExpr, MathFunction},
     latex::*,
     math::symbol::{BracketState, Number},
     utils::BracketStack,
 };
 
-use super::{
-    symbol::MathSymbol, ExpressionElement, LaTexParsingError, LaTexParsingErrorType,
-    LaTexParsingResult,
-};
+use super::{ExpressionElement, LaTexParsingError, LaTexParsingErrorType, LaTexParsingResult};
 
 #[derive(Debug)]
 pub struct ExpressionBuffer {
@@ -126,7 +123,7 @@ impl FromRawExpr for ExpressionBuffer {
             // Real Numbers
             if digit_start != -1 {
                 if let Some(scalar) = Number::parse_raw(&expr[digit_start as usize..i]) {
-                    expr_buffer.push(ExpressionElement::Symbol(MathSymbol::Number(scalar)));
+                    expr_buffer.push(ExpressionElement::Number(scalar));
                     digit_start = -1;
                 }
             }
@@ -137,9 +134,7 @@ impl FromRawExpr for ExpressionBuffer {
                 ADD | SUBTRACT | MULTIPLY | DIVIDE | SUPER_SCRIPT
             ) {
                 if matches!(c.to_string().as_str(), ADD | SUBTRACT) && expr_buffer.is_empty() {
-                    expr_buffer.push(ExpressionElement::Symbol(MathSymbol::Number(
-                        Number::Integer(0),
-                    )));
+                    expr_buffer.push(ExpressionElement::Number(Number::Integer(0)));
                 }
 
                 expr_buffer.push(ExpressionElement::Function(MathFunction::Phantom(
@@ -156,7 +151,7 @@ impl FromRawExpr for ExpressionBuffer {
 
         if digit_start != -1 {
             if let Some(scalar) = Number::parse_raw(&expr[digit_start as usize..]) {
-                expr_buffer.push(ExpressionElement::Symbol(MathSymbol::Number(scalar)));
+                expr_buffer.push(ExpressionElement::Number(scalar));
             } else {
                 return Err(LaTexParsingError::new(
                     digit_start as u32,
@@ -166,6 +161,16 @@ impl FromRawExpr for ExpressionBuffer {
         }
 
         Ok(Self { expr: expr_buffer })
+    }
+}
+
+impl IntoRawExpr for ExpressionBuffer {
+    fn assemble(&self) -> String {
+        self.expr
+            .iter()
+            .map(|elem| elem.assemble().chars().collect::<Vec<_>>())
+            .flatten()
+            .collect()
     }
 }
 
@@ -187,36 +192,51 @@ mod test {
 
     #[test]
     fn test_expr_parser_simple() {
-        // r#"15*16+2-9^2/3^{19+2.3}+(5.3+1)"#
+        // assert_eq!(
+        //     ExpressionBuffer::parse_raw(r#"15*16+2-9^2/3^{19-(-5+1)+2.3}+(5.3+1)"#)
+        //         .unwrap()
+        //         .assemble(),
+        //     "15Multiply16Add2Subtract9Power2Divide3Power19Subtract0Subtract5Add1Add2.3Add5.3Add1"
+        // );
         dbg!(ExpressionBuffer::parse_raw(r#"15*16+2-9^2/3^{19-(-5+1)+2.3}+(5.3+1)"#).unwrap());
     }
 
     #[test]
     fn test_expr_parser_func1() {
-        dbg!(
-            ExpressionBuffer::parse_raw(r#"5+\frac{2^5+\frac{1}{2}+\sqrt{2}{4}}{3}+5*3"#).unwrap()
+        assert_eq!(
+            ExpressionBuffer::parse_raw(r#"5+\frac{2^5+\frac{1}{2}+\sqrt{2}{4}}{3}+5*3"#)
+                .unwrap()
+                .assemble(),
+            "5AddFraction2Power5AddFraction12AddRoot243Add5Multiply3"
         );
     }
 
     #[test]
     fn test_expr_parser_func2() {
-        dbg!(
+        assert_eq!(
             ExpressionBuffer::parse_raw(r#"1/\frac{\lg_{5}}{\log_{3}{8}}^5+\ln_{\sqrt{2}}"#)
                 .unwrap()
+                .assemble(),
+            "1DivideFractionLg5Log38Power5AddLnRoot2"
         );
     }
 
     #[test]
     fn test_expr_parser_func3() {
-        dbg!(ExpressionBuffer::parse_raw(r#"\sin{\sqrt{3}}"#).unwrap());
+        assert_eq!(
+            ExpressionBuffer::parse_raw(r#"\sin{\sqrt{3}}"#)
+                .unwrap()
+                .assemble(),
+            "SinRoot3"
+        );
     }
 
     #[test]
     fn test_parsing_err() {
-        // let _ = dbg!(ExpressionBuffer::parse_raw(r#"{}())()"#));
-        // let _ = dbg!(ExpressionBuffer::parse_raw(r#"2_3*6"#));
-        // let _ = dbg!(ExpressionBuffer::parse_raw(r#"2-\frad{3}{4}"#));
-        // let _ = dbg!(ExpressionBuffer::parse_raw(r#"1+3."#));
+        let _ = dbg!(ExpressionBuffer::parse_raw(r#"{}())()"#));
+        let _ = dbg!(ExpressionBuffer::parse_raw(r#"2_3*6"#));
+        let _ = dbg!(ExpressionBuffer::parse_raw(r#"2-\frad{3}{4}"#));
+        let _ = dbg!(ExpressionBuffer::parse_raw(r#"1+3."#));
         let _ = dbg!(ExpressionBuffer::parse_raw(r#"2+(5/9.)"#));
     }
 }

@@ -1,4 +1,4 @@
-use crate::{DecimalScalar, IntegerScalar};
+use crate::{func::decl::IntoRawExpr, DecimalScalar, IntegerScalar};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BracketState {
@@ -6,10 +6,13 @@ pub enum BracketState {
     Close,
 }
 
-#[derive(Debug, Clone, Copy)]
-pub enum MathSymbol {
-    Number(Number),
-    Parentheses(BracketState),
+impl IntoRawExpr for BracketState {
+    fn assemble(&self) -> String {
+        match self {
+            BracketState::Open => format!("("),
+            BracketState::Close => format!(")"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -17,6 +20,15 @@ pub enum Number {
     Integer(IntegerScalar),
     Decimal(DecimalScalar),
     // Virtual()
+}
+
+impl IntoRawExpr for Number {
+    fn assemble(&self) -> String {
+        match self {
+            Number::Integer(i) => format!("{}", i),
+            Number::Decimal(d) => format!("{}", d),
+        }
+    }
 }
 
 impl Number {
