@@ -1,5 +1,4 @@
 pub mod api;
-pub mod func;
 pub mod latex;
 pub mod math;
 pub mod utils;

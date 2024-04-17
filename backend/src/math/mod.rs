@@ -1,4 +1,4 @@
-use crate::func::{
+use crate::math::func::{
     decl::{IntoRawExpr, Prioritizable},
     Function, Operator, PhantomFunction, PhantomOperator,
 };
@@ -9,6 +9,7 @@ use self::{
 };
 
 pub mod expr;
+pub mod func;
 pub mod symbol;
 
 pub type LaTexParsingResult<T> = Result<T, LaTexParsingError>;
@@ -61,12 +62,6 @@ impl Prioritizable for ExpressionElement {
             ExpressionElement::Function(_) => 10,
         }
     }
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub enum MathFunctionType {
-    Operator,
-    Function,
 }
 
 #[derive(Debug)]

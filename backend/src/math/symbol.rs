@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::{func::decl::IntoRawExpr, DecimalScalar, IntegerScalar};
+use crate::{math::func::decl::IntoRawExpr, DecimalScalar, IntegerScalar};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BracketState {

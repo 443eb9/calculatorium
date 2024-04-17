@@ -1,9 +1,8 @@
 use std::fmt::Debug;
 
-use super::PhantomFunction;
+use super::{Function, Operator, PhantomFunction, PhantomOperator};
 
 use crate::{
-    func::{Function, Operator, PhantomOperator},
     latex::*,
     math::{ExpressionElement, LaTexParsingError, LaTexParsingResult},
 };
