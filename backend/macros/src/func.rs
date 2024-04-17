@@ -21,7 +21,7 @@ pub fn expand_from_expr_derive(input: syn::DeriveInput) -> proc_macro::TokenStre
 
         field_accessors.push(quote! {
             #[inline]
-            pub fn #field_name(&self) -> &MathElement {
+            pub fn #field_name(&self) -> &ExpressionElement {
                 &self.#field_name
             }
         });
@@ -29,7 +29,7 @@ pub fn expand_from_expr_derive(input: syn::DeriveInput) -> proc_macro::TokenStre
 
     quote! {
         impl FromExpr for #ty {
-            fn convert(mut expr: Vec<Option<MathElement>>) -> Self {
+            fn convert(mut expr: Vec<Option<ExpressionElement>>) -> Self {
                 Self {
                     #(#field_ctons)*
                 }
@@ -97,7 +97,7 @@ pub fn expand_as_phantom_function_derive(input: syn::DeriveInput) -> proc_macro:
             }
 
             #[inline]
-            fn solidify(&self, params: Vec<Option<MathElement>>) -> MathFunction {
+            fn solidify(&self, params: Vec<Option<ExpressionElement>>) -> MathFunction {
                 MathFunction::#ty(Box::new(<#ty>::convert(params)))
             }
         }

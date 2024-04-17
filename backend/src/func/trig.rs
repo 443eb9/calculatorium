@@ -1,4 +1,4 @@
-use crate::math::ExpressionElement;
+use crate::math::MathElement;
 
 use super::{
     decl::{Prioritizable, Sin},
@@ -13,7 +13,7 @@ impl Prioritizable for Sin {
 }
 
 impl Function for Sin {
-    fn evaluate(&self) -> ExpressionElement {
+    fn evaluate(&self) -> MathElement {
         todo!()
     }
 }

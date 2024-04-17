@@ -1,4 +1,4 @@
-use crate::math::ExpressionElement;
+use crate::math::MathElement;
 
 use super::{
     decl::{Add, Divide, Multiply, Prioritizable, Subtract},
@@ -13,7 +13,7 @@ impl Prioritizable for Add {
 }
 
 impl Function for Add {
-    fn evaluate(&self) -> ExpressionElement {
+    fn evaluate(&self) -> MathElement {
         todo!()
     }
 }
@@ -26,7 +26,7 @@ impl Prioritizable for Subtract {
 }
 
 impl Function for Subtract {
-    fn evaluate(&self) -> ExpressionElement {
+    fn evaluate(&self) -> MathElement {
         todo!()
     }
 }
@@ -39,7 +39,7 @@ impl Prioritizable for Multiply {
 }
 
 impl Function for Multiply {
-    fn evaluate(&self) -> ExpressionElement {
+    fn evaluate(&self) -> MathElement {
         todo!()
     }
 }
@@ -52,7 +52,7 @@ impl Prioritizable for Divide {
 }
 
 impl Function for Divide {
-    fn evaluate(&self) -> ExpressionElement {
+    fn evaluate(&self) -> MathElement {
         todo!()
     }
 }

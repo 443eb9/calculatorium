@@ -35,44 +35,46 @@ pub enum LaTexParsingErrorType {
 }
 
 #[derive(Debug)]
-pub enum MathElement {
-    Number(Number),
-    Function(Box<dyn Function>),
-}
-
-impl IntoRawExpr for MathElement {
-    fn assemble(&self) -> String {
-        match self {
-            MathElement::Number(n) => n.assemble(),
-            MathElement::Function(n) => n.assemble(),
-        }
-    }
-}
-
-impl Prioritizable for MathElement {
-    fn priority(&self) -> u32 {
-        match self {
-            MathElement::Number(_) => 1,
-            MathElement::Function(f) => f.priority(),
-        }
-    }
-}
-
-#[derive(Debug)]
 pub enum ExpressionElement {
     Number(Number),
-    Parentheses(BracketState),
-    Function(Box<dyn PhantomFunction>),
-    Expression(ExpressionBuffer),
+    Function(Box<dyn Function>),
 }
 
 impl IntoRawExpr for ExpressionElement {
     fn assemble(&self) -> String {
         match self {
             ExpressionElement::Number(n) => n.assemble(),
-            ExpressionElement::Parentheses(n) => n.assemble(),
             ExpressionElement::Function(n) => n.assemble(),
-            ExpressionElement::Expression(n) => n.assemble(),
+        }
+    }
+}
+
+impl Prioritizable for ExpressionElement {
+    fn priority(&self) -> u32 {
+        match self {
+            ExpressionElement::Number(_) => 1,
+            ExpressionElement::Function(f) => f.priority(),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum MathElement {
+    Number(Number),
+    Parentheses(BracketState),
+    Function(Box<dyn Function>),
+    PhantomFunction(Box<dyn PhantomFunction>),
+    Expression(ExpressionBuffer),
+}
+
+impl IntoRawExpr for MathElement {
+    fn assemble(&self) -> String {
+        match self {
+            MathElement::Number(n) => n.assemble(),
+            MathElement::Parentheses(p) => p.assemble(),
+            MathElement::Function(f) => f.assemble(),
+            MathElement::PhantomFunction(phf) => phf.assemble(),
+            MathElement::Expression(e) => e.assemble(),
         }
     }
 }

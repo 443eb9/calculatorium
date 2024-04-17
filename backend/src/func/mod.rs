@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use crate::math::{ExpressionElement, MathElement};
+use crate::math::{MathElement, ExpressionElement};
 
 use self::decl::{IntoRawExpr, MathFunction, Prioritizable};
 
@@ -13,9 +13,9 @@ pub trait AsPhantomFunction {}
 
 pub trait PhantomFunction: Debug + IntoRawExpr {
     fn num_params(&self) -> u32;
-    fn solidify(&self, params: Vec<Option<MathElement>>) -> MathFunction;
+    fn solidify(&self, params: Vec<Option<ExpressionElement>>) -> MathFunction;
 }
 
 pub trait Function: Debug + IntoRawExpr + Prioritizable {
-    fn evaluate(&self) -> ExpressionElement;
+    fn evaluate(&self) -> MathElement;
 }

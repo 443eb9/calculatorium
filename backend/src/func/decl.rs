@@ -4,7 +4,7 @@ use super::PhantomFunction;
 
 use crate::{
     latex::*,
-    math::{LaTexParsingError, LaTexParsingResult, MathElement},
+    math::{LaTexParsingError, LaTexParsingResult, ExpressionElement},
 };
 
 use calculatorium_macros::{AsPhantomFunction, FromExpr, IntoRawExpr};
@@ -35,7 +35,7 @@ pub trait Prioritizable {
 }
 
 pub trait FromExpr {
-    fn convert(expr: Vec<Option<MathElement>>) -> Self
+    fn convert(expr: Vec<Option<ExpressionElement>>) -> Self
     where
         Self: Sized;
 }
@@ -68,7 +68,7 @@ macro_rules! define_operator {
     ($op_ty: ident, $op_name: expr, $($field: ident),*) => {
         #[derive(Debug, FromExpr, AsPhantomFunction)]
         pub struct $op_ty {
-            $($field: MathElement,)*
+            $($field: ExpressionElement,)*
         }
 
         impl $op_ty {
@@ -81,7 +81,7 @@ macro_rules! define_function {
     ($fn_ty: ident, $fn_name: expr, $($field: ident),*) => {
         #[derive(Debug, FromExpr, IntoRawExpr, AsPhantomFunction)]
         pub struct $fn_ty {
-            $($field: MathElement,)*
+            $($field: ExpressionElement,)*
         }
 
         impl $fn_ty {
@@ -167,10 +167,10 @@ mod test {
     fn test_into_raw_expr() {
         assert_eq!(
             Add {
-                lhs: MathElement::Number(Number::Integer(1)),
-                rhs: MathElement::Function(Box::new(Subtract {
-                    lhs: MathElement::Number(Number::Integer(2)),
-                    rhs: MathElement::Number(Number::Decimal(3.8))
+                lhs: ExpressionElement::Number(Number::Integer(1)),
+                rhs: ExpressionElement::Function(Box::new(Subtract {
+                    lhs: ExpressionElement::Number(Number::Integer(2)),
+                    rhs: ExpressionElement::Number(Number::Decimal(3.8))
                 })),
             }
             .assemble(),
@@ -181,15 +181,15 @@ mod test {
         // wrap the contents of the lhs with parentheses and place it on the right side.
         assert_eq!(
             Fraction {
-                num: MathElement::Function(Box::new(Sin {
-                    x: MathElement::Number(Number::Integer(3))
+                num: ExpressionElement::Function(Box::new(Sin {
+                    x: ExpressionElement::Number(Number::Integer(3))
                 })),
-                den: MathElement::Function(Box::new(Multiply {
-                    lhs: MathElement::Function(Box::new(Add {
-                        lhs: MathElement::Number(Number::Integer(5)),
-                        rhs: MathElement::Number(Number::Integer(7))
+                den: ExpressionElement::Function(Box::new(Multiply {
+                    lhs: ExpressionElement::Function(Box::new(Add {
+                        lhs: ExpressionElement::Number(Number::Integer(5)),
+                        rhs: ExpressionElement::Number(Number::Integer(7))
                     })),
-                    rhs: MathElement::Number(Number::Decimal(6.5)),
+                    rhs: ExpressionElement::Number(Number::Decimal(6.5)),
                 })),
             }
             .assemble(),
