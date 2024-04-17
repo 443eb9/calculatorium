@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::{func::decl::IntoRawExpr, DecimalScalar, IntegerScalar};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -16,9 +18,35 @@ impl IntoRawExpr for BracketState {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Constant {
+    Pi,
+    E,
+}
+
+impl Display for Constant {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Constant::Pi => "\\pi",
+            Constant::E => "e",
+        })
+    }
+}
+
+impl Constant {
+    pub fn parse_raw(expr: &str) -> Option<Self> {
+        match expr {
+            "\\pi" => Some(Self::Pi),
+            "e" => Some(Self::E),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Number {
     Integer(IntegerScalar),
     Decimal(DecimalScalar),
+    Constant(Constant),
     // Virtual()
 }
 
@@ -27,6 +55,7 @@ impl IntoRawExpr for Number {
         match self {
             Number::Integer(i) => format!("{}", i),
             Number::Decimal(d) => format!("{}", d),
+            Number::Constant(c) => format!("{}", c),
         }
     }
 }

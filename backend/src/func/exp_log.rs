@@ -1,7 +1,7 @@
 use crate::math::MathElement;
 
 use super::{
-    decl::{Lg, Ln, Log, Power, Root},
+    decl::{Log, Power, Root},
     Function, Operator,
 };
 
@@ -18,18 +18,6 @@ impl Operator for Power {
 }
 
 impl Function for Log {
-    fn evaluate(&self) -> MathElement {
-        todo!()
-    }
-}
-
-impl Function for Lg {
-    fn evaluate(&self) -> MathElement {
-        todo!()
-    }
-}
-
-impl Function for Ln {
     fn evaluate(&self) -> MathElement {
         todo!()
     }

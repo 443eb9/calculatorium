@@ -6,8 +6,8 @@ use crate::{
 };
 
 use super::{
-    ExpressionElement, LaTexParsingError, LaTexParsingErrorType, LaTexParsingResult, MathElement,
-    MathFunctionType,
+    symbol::Constant, ExpressionElement, LaTexParsingError, LaTexParsingErrorType,
+    LaTexParsingResult, MathElement, MathFunctionType,
 };
 
 #[derive(Debug)]
@@ -84,17 +84,38 @@ impl FromRawExpr for ExpressionBuffer {
 
             // Functions
             if func_def_start != -1 && c == CURLY_BRACKET_L {
-                let f =
-                    get_phantom_function(&expr[func_def_start as usize..i]).ok_or_else(|| {
-                        LaTexParsingError::new(
-                            func_def_start as u32 - 1,
-                            LaTexParsingErrorType::InvalidFunctionName(
-                                (&expr[func_def_start as usize..i]).to_string(),
-                            ),
-                        )
-                    })?;
+                let mut f_name = &expr[func_def_start as usize..i];
+                let mut optional_param = handle_optional_params(f_name);
+
+                // Root has a optinal parameter that is wrapped around []
+                if f_name.starts_with(ROOT) && f_name != ROOT {
+                    optional_param = Some(
+                        Number::parse_raw(&f_name[f_name.len() - ROOT.len() + 2..f_name.len() - 1])
+                            .ok_or_else(|| {
+                                LaTexParsingError::new(
+                                    func_def_start as u32,
+                                    LaTexParsingErrorType::InvalidFunctionInvocation(
+                                        f_name.to_string(),
+                                    ),
+                                )
+                            })?,
+                    );
+                    f_name = ROOT;
+                }
+
+                let f = get_phantom_function(f_name).ok_or_else(|| {
+                    LaTexParsingError::new(
+                        func_def_start as u32 - 1,
+                        LaTexParsingErrorType::InvalidFunctionName(f_name.to_string()),
+                    )
+                })?;
 
                 expr_buffer.push(MathElement::PhantomFunction(f));
+                if let Some(opt) = optional_param {
+                    expr_buffer.push(MathElement::Expression(ExpressionBuffer {
+                        expr: vec![MathElement::Number(opt)],
+                    }));
+                }
                 func_def_start = -1;
             }
 
@@ -143,6 +164,8 @@ impl FromRawExpr for ExpressionBuffer {
                 continue;
             }
 
+            // Constants
+
             // Custom Variables
             if c.is_ascii_lowercase() {
                 todo!("parse custom variables");
@@ -182,6 +205,15 @@ impl FromRawExpr for ExpressionBuffer {
         }
 
         Ok(Self { expr: expr_buffer })
+    }
+}
+
+fn handle_optional_params(f_name: &str) -> Option<Number> {
+    match f_name {
+        ROOT => Some(Number::Integer(2)),
+        LG => Some(Number::Integer(10)),
+        LN => Some(Number::Constant(Constant::E)),
+        _ => None,
     }
 }
 
@@ -346,7 +378,7 @@ mod test {
     #[test]
     fn test_expr_parser_func1() {
         dbg!(ExpresssionTree::from_postfix(
-            ExpressionBuffer::parse_raw(r#"5+\frac{2^5+\frac{1}{2}+\sqrt{2}{4}}{3}+5*3"#)
+            ExpressionBuffer::parse_raw(r#"5+\frac{2^5+\frac{1}{2}+\sqrt{58}}{3}+5*3"#)
                 .unwrap()
                 .to_postfix()
                 .unwrap()
@@ -356,15 +388,8 @@ mod test {
 
     #[test]
     fn test_expr_parser_func2() {
-        // dbg!(ExpresssionTree::from_postfix(
-        //     ExpressionBuffer::parse_raw(r#"1/\frac{\lg_{5}}{\log_{3}{8}}^5+\ln_{\sqrt{2}}"#)
-        //         .unwrap()
-        //         .to_postfix()
-        //         .unwrap()
-        // )
-        // .unwrap());
         dbg!(ExpresssionTree::from_postfix(
-            ExpressionBuffer::parse_raw(r#"\frac{\lg_{5}}{\log_{3}{8}}^5"#)
+            ExpressionBuffer::parse_raw(r#"1/\frac{\lg_{5}}{\log_{3}{8}}^5+\ln_{\sqrt{2}}"#)
                 .unwrap()
                 .to_postfix()
                 .unwrap()
@@ -375,7 +400,7 @@ mod test {
     #[test]
     fn test_expr_parser_func3() {
         dbg!(ExpresssionTree::from_postfix(
-            ExpressionBuffer::parse_raw(r#"\sin{\sqrt{2}{3}}"#)
+            ExpressionBuffer::parse_raw(r#"\sin{\sqrt[4]{3}}"#)
                 .unwrap()
                 .to_postfix()
                 .unwrap()

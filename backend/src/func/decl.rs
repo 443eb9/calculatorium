@@ -136,8 +136,6 @@ define_function!(Fraction, FRAC, num, den);
 define_function!(Root, ROOT, rad, deg);
 
 define_function!(Log, LOG, base, anti);
-define_function!(Lg, LG, anti);
-define_function!(Ln, LN, anti);
 
 define_function!(Sin, SIN, x);
 define_function!(Cos, COS, x);
@@ -148,9 +146,7 @@ register_phantom_functions!(
     FRAC, PhantomFraction,
     ROOT, PhantomRoot,
     
-    LOG, PhantomLog,
-    LG, PhantomLg,
-    LN, PhantomLn,
+    LOG | LG | LN, PhantomLog,
 
     SIN, PhantomSin,
     COS, PhantomCos,
