@@ -8,8 +8,8 @@ use crate::{
 };
 
 use super::{
-    symbol::Constant, ExpressionElement, LaTexParsingError, LaTexParsingErrorType,
-    LaTexParsingResult, MathElement,
+    symbol::Constant, ErrorLocation, ExpressionElement, LaTexParsingError, LaTexParsingResult,
+    MathElement, ParsingErrorType,
 };
 
 #[derive(Debug)]
@@ -20,7 +20,10 @@ pub struct ExpressionBuffer {
 impl FromRawExpr for ExpressionBuffer {
     fn parse_raw(expr: &str) -> LaTexParsingResult<Self> {
         if expr.is_empty() {
-            return Err(LaTexParsingError::new(0, LaTexParsingErrorType::EmptyInput));
+            return Err(LaTexParsingError::new(
+                ErrorLocation::Raw(0),
+                ParsingErrorType::EmptyInput,
+            ));
         }
 
         let mut expr_buffer = Vec::new();
@@ -46,8 +49,8 @@ impl FromRawExpr for ExpressionBuffer {
 
             if !curly_brackets.is_valid() || !parentheses.is_valid() {
                 return Err(LaTexParsingError::new(
-                    i as u32,
-                    LaTexParsingErrorType::InvalidBracketStructure,
+                    ErrorLocation::Raw(i as u32),
+                    ParsingErrorType::InvalidBracketStructure,
                 ));
             }
 
@@ -95,10 +98,8 @@ impl FromRawExpr for ExpressionBuffer {
                         Number::parse_raw(&f_name[f_name.len() - ROOT.len() + 2..f_name.len() - 1])
                             .ok_or_else(|| {
                                 LaTexParsingError::new(
-                                    func_def_start as u32,
-                                    LaTexParsingErrorType::InvalidFunctionInvocation(
-                                        f_name.to_string(),
-                                    ),
+                                    ErrorLocation::Raw(func_def_start as u32),
+                                    ParsingErrorType::InvalidFunctionInvocation(f_name.to_string()),
                                 )
                             })?,
                     );
@@ -107,8 +108,8 @@ impl FromRawExpr for ExpressionBuffer {
 
                 let f = get_phantom_function(f_name).ok_or_else(|| {
                     LaTexParsingError::new(
-                        func_def_start as u32 - 1,
-                        LaTexParsingErrorType::InvalidFunctionName(f_name.to_string()),
+                        ErrorLocation::Raw(func_def_start as u32 - 1),
+                        ParsingErrorType::InvalidFunctionName(f_name.to_string()),
                     )
                 })?;
 
@@ -129,8 +130,8 @@ impl FromRawExpr for ExpressionBuffer {
                         number_start = -1;
                     } else {
                         return Err(LaTexParsingError::new(
-                            number_start as u32,
-                            LaTexParsingErrorType::InvalidNumber(
+                            ErrorLocation::Raw(number_start as u32),
+                            ParsingErrorType::InvalidNumber(
                                 expr[number_start as usize..i].to_string(),
                             ),
                         ));
@@ -190,8 +191,8 @@ impl FromRawExpr for ExpressionBuffer {
             }
 
             return Err(LaTexParsingError::new(
-                i as u32,
-                LaTexParsingErrorType::Unknown,
+                ErrorLocation::Raw(i as u32),
+                ParsingErrorType::Unknown,
             ));
         }
 
@@ -200,8 +201,8 @@ impl FromRawExpr for ExpressionBuffer {
                 expr_buffer.push(MathElement::Number(scalar));
             } else {
                 return Err(LaTexParsingError::new(
-                    number_start as u32,
-                    LaTexParsingErrorType::InvalidNumber(expr[number_start as usize..].to_string()),
+                    ErrorLocation::Raw(number_start as u32),
+                    ParsingErrorType::InvalidNumber(expr[number_start as usize..].to_string()),
                 ));
             }
         }
@@ -222,7 +223,10 @@ fn handle_optional_params(f_name: &str) -> Option<Number> {
 impl ExpressionBuffer {
     pub fn to_postfix(self) -> LaTexParsingResult<Vec<MathElement>> {
         if self.expr.is_empty() {
-            return Err(LaTexParsingError::new(0, LaTexParsingErrorType::EmptyInput));
+            return Err(LaTexParsingError::new(
+                ErrorLocation::Tokenized(0),
+                ParsingErrorType::EmptyInput,
+            ));
         }
 
         let mut raw_buffer = self.expr.into_iter().map(|e| Some(e)).collect::<Vec<_>>();
@@ -243,8 +247,8 @@ impl ExpressionBuffer {
                     let mut params = Vec::with_capacity(n);
 
                     let err_template = LaTexParsingError::new(
-                        i as u32,
-                        LaTexParsingErrorType::InvalidFunctionInvocation(format!("{:?}", phf)),
+                        ErrorLocation::Tokenized(i as u32),
+                        ParsingErrorType::InvalidFunctionInvocation(format!("{:?}", phf)),
                     );
 
                     for param in &mut raw_buffer[i + 1..i + 1 + n] {
@@ -264,16 +268,19 @@ impl ExpressionBuffer {
                     buffer.push(MathElement::Function(phf.solidify(params)));
                 }
                 MathElement::PhantomOperator(pho) => buffer.push(MathElement::PhantomOperator(pho)),
-                MathElement::Function(_) => todo!(),
-                MathElement::Operator(_) => todo!(),
-                MathElement::Expression(_) => todo!(),
+                _ => {
+                    return Err(LaTexParsingError::new(
+                        ErrorLocation::Tokenized(i as u32),
+                        ParsingErrorType::Unknown,
+                    ));
+                }
             }
         }
 
         let mut fn_stack = Vec::new();
         let mut num_stack = Vec::new();
 
-        for elem in buffer.drain(..) {
+        for (i, elem) in buffer.drain(..).enumerate() {
             match elem {
                 MathElement::Number(n) => num_stack.push(MathElement::Number(n)),
                 MathElement::Parentheses(p) => match p {
@@ -309,9 +316,12 @@ impl ExpressionBuffer {
                         fn_stack.push(MathElement::PhantomOperator(pho));
                     }
                 }
-                MathElement::Operator(_) => todo!(),
-                MathElement::PhantomFunction(_) => todo!(),
-                MathElement::Expression(_) => todo!(),
+                _ => {
+                    return Err(LaTexParsingError::new(
+                        ErrorLocation::Tokenized(i as u32),
+                        ParsingErrorType::Unknown,
+                    ));
+                }
             }
         }
 
@@ -335,7 +345,10 @@ impl FromRawExpr for ExpresssionTree {
 impl ExpresssionTree {
     pub fn from_postfix(expr: Vec<MathElement>) -> LaTexParsingResult<Self> {
         if expr.is_empty() {
-            return Err(LaTexParsingError::new(0, LaTexParsingErrorType::EmptyInput));
+            return Err(LaTexParsingError::new(
+                ErrorLocation::Tokenized(0),
+                ParsingErrorType::EmptyInput,
+            ));
         }
 
         let mut expr = expr.into_iter().rev().collect::<Vec<_>>();
@@ -344,15 +357,12 @@ impl ExpresssionTree {
         while let Some(elem) = expr.pop() {
             match elem {
                 MathElement::Number(n) => tree_buffer.push(ExpressionElement::Number(n)),
-                MathElement::Parentheses(_) => todo!(),
                 MathElement::Function(f) => tree_buffer.push(ExpressionElement::Function(f)),
-                MathElement::Operator(_) => todo!(),
-                MathElement::PhantomFunction(_) => todo!(),
                 MathElement::PhantomOperator(pho) => {
                     let params = vec![tree_buffer.pop(), tree_buffer.pop()];
                     tree_buffer.push(ExpressionElement::Operator(pho.solidify(params)));
                 }
-                MathElement::Expression(_) => todo!(),
+                _ => unreachable!(),
             }
         }
 

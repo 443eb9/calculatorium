@@ -14,21 +14,27 @@ pub mod symbol;
 
 pub type LaTexParsingResult<T> = Result<T, LaTexParsingError>;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ErrorLocation {
+    Raw(u32),
+    Tokenized(u32),
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LaTexParsingError {
-    pub at: u32,
-    pub ty: LaTexParsingErrorType,
+    pub at: ErrorLocation,
+    pub ty: ParsingErrorType,
 }
 
 impl LaTexParsingError {
     #[inline]
-    pub fn new(at: u32, ty: LaTexParsingErrorType) -> Self {
+    pub fn new(at: ErrorLocation, ty: ParsingErrorType) -> Self {
         Self { at, ty }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum LaTexParsingErrorType {
+pub enum ParsingErrorType {
     EmptyInput,
     InvalidNumber(String),
     InvalidBracketStructure,

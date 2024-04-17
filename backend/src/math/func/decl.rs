@@ -4,7 +4,7 @@ use super::{Function, Operator, PhantomFunction, PhantomOperator};
 
 use crate::{
     latex::*,
-    math::{ExpressionElement, LaTexParsingError, LaTexParsingResult},
+    math::{ErrorLocation, ExpressionElement, LaTexParsingError, LaTexParsingResult},
 };
 
 use calculatorium_macros::{AsPhantomFunction, AsPhantomOperator, FromExpr, IntoRawExpr};
@@ -18,7 +18,15 @@ pub trait FromRawExpr {
     where
         Self: Sized,
     {
-        Self::parse_raw(expr).map_err(|e| LaTexParsingError::new(e.at + base, e.ty))
+        Self::parse_raw(expr).map_err(|e| {
+            LaTexParsingError::new(
+                match e.at {
+                    ErrorLocation::Raw(i) => ErrorLocation::Raw(i + base),
+                    ErrorLocation::Tokenized(i) => ErrorLocation::Tokenized(i + base),
+                },
+                e.ty,
+            )
+        })
     }
 }
 
