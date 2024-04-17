@@ -1,18 +1,23 @@
 use crate::math::MathElement;
 
 use super::{
-    decl::{Prioritizable, Sin},
+    decl::{Cos, Sin, Tan},
     Function,
 };
 
-impl Prioritizable for Sin {
-    #[inline]
-    fn priority(&self) -> u32 {
-        10
+impl Function for Sin {
+    fn evaluate(&self) -> MathElement {
+        todo!()
     }
 }
 
-impl Function for Sin {
+impl Function for Cos {
+    fn evaluate(&self) -> MathElement {
+        todo!()
+    }
+}
+
+impl Function for Tan {
     fn evaluate(&self) -> MathElement {
         todo!()
     }

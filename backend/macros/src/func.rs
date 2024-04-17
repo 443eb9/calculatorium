@@ -1,5 +1,5 @@
 use quote::quote;
-use syn::{Data, Ident};
+use syn::{Data, Ident, Meta};
 
 pub fn expand_from_expr_derive(input: syn::DeriveInput) -> proc_macro::TokenStream {
     let ty = input.ident;
@@ -61,7 +61,7 @@ pub fn expand_into_raw_expr_derive(input: syn::DeriveInput) -> proc_macro::Token
         });
         field_assembler_template.push_str("{{{}}}");
     }
-    
+
     quote! {
         impl IntoRawExpr for #ty {
             fn assemble(&self) -> String {
@@ -97,14 +97,64 @@ pub fn expand_as_phantom_function_derive(input: syn::DeriveInput) -> proc_macro:
             }
 
             #[inline]
-            fn solidify(&self, params: Vec<Option<ExpressionElement>>) -> MathFunction {
-                MathFunction::#ty(Box::new(<#ty>::convert(params)))
+            fn solidify(&self, params: Vec<Option<ExpressionElement>>) -> Box<dyn Function> {
+                Box::new(<#ty>::convert(params))
+            }
+        }
+
+        impl IntoRawExpr for #phty {
+            #[inline]
+            fn assemble(&self) -> String {
+                stringify!(#ty).to_string()
+            }
+        }
+
+        impl Prioritizable for #phty {
+            #[inline]
+            fn priority(&self) -> u32 {
+                10
+            }
+        }
+    }
+    .into()
+}
+
+const PRIORITY_ATTR: &str = "priority";
+
+pub fn expand_as_phantom_operator_derive(input: syn::DeriveInput) -> proc_macro::TokenStream {
+    let ty = input.ident;
+    let phty = Ident::new(&format!("Phantom{}", ty), ty.span());
+
+    let priority_attr = input
+        .attrs
+        .iter()
+        .find(|attr| attr.path().get_ident().unwrap() == PRIORITY_ATTR)
+        .unwrap();
+    let Meta::List(meta) = &priority_attr.meta else {
+        panic!()
+    };
+    let priority = &meta.tokens;
+
+    quote! {
+        #[derive(Debug, Default)]
+        pub struct #phty;
+
+        impl PhantomOperator for #phty {
+            #[inline]
+            fn solidify(&self, params: Vec<Option<ExpressionElement>>) -> Box<dyn Operator> {
+                Box::new(<#ty>::convert(params))
             }
         }
 
         impl IntoRawExpr for #phty {
             fn assemble(&self) -> String {
                 stringify!(#ty).to_string()
+            }
+        }
+
+        impl Prioritizable for #phty {
+            fn priority(&self) -> u32 {
+                #priority
             }
         }
     }

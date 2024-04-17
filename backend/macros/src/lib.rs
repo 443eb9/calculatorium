@@ -14,3 +14,8 @@ pub fn derive_into_raw_expr(input: proc_macro::TokenStream) -> proc_macro::Token
 pub fn derive_as_phantom_function(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     func::expand_as_phantom_function_derive(syn::parse(input).unwrap())
 }
+
+#[proc_macro_derive(AsPhantomOperator, attributes(priority))]
+pub fn derive_as_phantom_operator(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    func::expand_as_phantom_operator_derive(syn::parse(input).unwrap())
+}

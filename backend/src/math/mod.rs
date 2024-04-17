@@ -1,6 +1,6 @@
 use crate::func::{
     decl::{IntoRawExpr, Prioritizable},
-    Function, PhantomFunction,
+    Function, Operator, PhantomFunction, PhantomOperator,
 };
 
 use self::{
@@ -28,15 +28,18 @@ impl LaTexParsingError {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LaTexParsingErrorType {
+    EmptyInput,
     InvalidNumber(String),
     InvalidBracketStructure,
     InvalidFunctionName(String),
+    InvalidFunctionInvocation(String),
     Unknown,
 }
 
 #[derive(Debug)]
 pub enum ExpressionElement {
     Number(Number),
+    Operator(Box<dyn Operator>),
     Function(Box<dyn Function>),
 }
 
@@ -44,6 +47,7 @@ impl IntoRawExpr for ExpressionElement {
     fn assemble(&self) -> String {
         match self {
             ExpressionElement::Number(n) => n.assemble(),
+            ExpressionElement::Operator(o) => o.assemble(),
             ExpressionElement::Function(n) => n.assemble(),
         }
     }
@@ -53,9 +57,16 @@ impl Prioritizable for ExpressionElement {
     fn priority(&self) -> u32 {
         match self {
             ExpressionElement::Number(_) => 1,
-            ExpressionElement::Function(f) => f.priority(),
+            ExpressionElement::Operator(o) => o.priority(),
+            ExpressionElement::Function(_) => 10,
         }
     }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum MathFunctionType {
+    Operator,
+    Function,
 }
 
 #[derive(Debug)]
@@ -63,18 +74,8 @@ pub enum MathElement {
     Number(Number),
     Parentheses(BracketState),
     Function(Box<dyn Function>),
+    Operator(Box<dyn Operator>),
     PhantomFunction(Box<dyn PhantomFunction>),
+    PhantomOperator(Box<dyn PhantomOperator>),
     Expression(ExpressionBuffer),
-}
-
-impl IntoRawExpr for MathElement {
-    fn assemble(&self) -> String {
-        match self {
-            MathElement::Number(n) => n.assemble(),
-            MathElement::Parentheses(p) => p.assemble(),
-            MathElement::Function(f) => f.assemble(),
-            MathElement::PhantomFunction(phf) => phf.assemble(),
-            MathElement::Expression(e) => e.assemble(),
-        }
-    }
 }

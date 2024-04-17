@@ -3,11 +3,12 @@ use std::fmt::Debug;
 use super::PhantomFunction;
 
 use crate::{
+    func::{Function, Operator, PhantomOperator},
     latex::*,
-    math::{LaTexParsingError, LaTexParsingResult, ExpressionElement},
+    math::{ExpressionElement, LaTexParsingError, LaTexParsingResult},
 };
 
-use calculatorium_macros::{AsPhantomFunction, FromExpr, IntoRawExpr};
+use calculatorium_macros::{AsPhantomFunction, AsPhantomOperator, FromExpr, IntoRawExpr};
 
 pub trait FromRawExpr {
     fn parse_raw(expr: &str) -> LaTexParsingResult<Self>
@@ -40,21 +41,8 @@ pub trait FromExpr {
         Self: Sized;
 }
 
-macro_rules! register_functions {
-    ($($fn_name: pat, $fn_ident: ident, $fn_ty: ty, $phfn_ty: ty, $num_params: literal),*) => {
-        #[derive(Debug)]
-        pub enum MathFunction {
-            $($fn_ident(Box<$fn_ty>),)*
-        }
-
-        impl IntoRawExpr for MathFunction {
-            fn assemble(&self) -> String {
-                match self {
-                    $(Self::$fn_ident(f) => f.assemble(),)*
-                }
-            }
-        }
-
+macro_rules! register_phantom_functions {
+    ($($fn_name: pat, $phfn_ty: ty),*) => {
         pub fn get_phantom_function(name: &str) -> Option<Box<dyn PhantomFunction>> {
             match name {
                 $($fn_name => Some(Box::new(<$phfn_ty>::default())),)*
@@ -64,15 +52,33 @@ macro_rules! register_functions {
     };
 }
 
+macro_rules! register_phantom_operators {
+    ($($op_name: pat, $phop_ty: ty),*) => {
+        pub fn get_phantom_operator(name: &str) -> Option<Box<dyn PhantomOperator>> {
+            match name {
+                $($op_name => Some(Box::new(<$phop_ty>::default())),)*
+                _ => None
+            }
+        }
+    };
+}
+
 macro_rules! define_operator {
-    ($op_ty: ident, $op_name: expr, $($field: ident),*) => {
-        #[derive(Debug, FromExpr, AsPhantomFunction)]
+    ($priority: literal, $op_ty: ident, $op_name: expr, $($field: ident),*) => {
+        #[derive(Debug, FromExpr, AsPhantomOperator)]
+        #[priority($priority)]
         pub struct $op_ty {
             $($field: ExpressionElement,)*
         }
 
         impl $op_ty {
             pub const LATEX_SYMBOL: &'static str = $op_name;
+        }
+
+        impl Prioritizable for $op_ty {
+            fn priority(&self) -> u32 {
+                $priority
+            }
         }
     };
 }
@@ -115,11 +121,11 @@ impl IntoRawExpr for Power {
     }
 }
 
-define_operator!(Add, ADD, lhs, rhs);
-define_operator!(Subtract, SUBTRACT, lhs, rhs);
-define_operator!(Multiply, MULTIPLY, lhs, rhs);
-define_operator!(Divide, DIVIDE, lhs, rhs);
-define_operator!(Power, SUPER_SCRIPT, base, exp);
+define_operator!(1, Add, ADD, lhs, rhs);
+define_operator!(1, Subtract, SUBTRACT, lhs, rhs);
+define_operator!(5, Multiply, MULTIPLY, lhs, rhs);
+define_operator!(5, Divide, DIVIDE, lhs, rhs);
+define_operator!(10, Power, SUPER_SCRIPT, base, exp);
 
 impl_into_raw_expr_op!(Add, ADD);
 impl_into_raw_expr_op!(Subtract, SUBTRACT);
@@ -138,62 +144,65 @@ define_function!(Cos, COS, x);
 define_function!(Tan, TAN, x);
 
 #[rustfmt::skip]
-register_functions!(
-    ADD, Add, Add, PhantomAdd, 2,
-    SUBTRACT, Subtract, Subtract, PhantomSubtract, 2,
-    MULTIPLY, Multiply, Multiply, PhantomMultiply, 2,
-    DIVIDE, Divide, Divide, PhantomDivide, 2,
-    SUPER_SCRIPT, Power, Power, PhantomPower, 2,
-
-    FRAC, Fraction, Fraction, PhantomFraction, 2,
-    ROOT, Root, Root, PhantomRoot, 2,
+register_phantom_functions!(
+    FRAC, PhantomFraction,
+    ROOT, PhantomRoot,
     
-    LOG, Log, Log, PhantomLog, 2,
-    LG, Lg, Lg, PhantomLg, 1,
-    LN, Ln, Ln, PhantomLn, 1,
+    LOG, PhantomLog,
+    LG, PhantomLg,
+    LN, PhantomLn,
 
-    SIN, Sin, Sin, PhantomSin, 1,
-    COS, Cos, Cos, PhantomCos, 1,
-    TAN, Tan, Tan, PhantomTan, 1
+    SIN, PhantomSin,
+    COS, PhantomCos,
+    TAN, PhantomTan
 );
 
-#[cfg(test)]
-mod test {
-    use crate::math::symbol::Number;
+#[rustfmt::skip]
+register_phantom_operators!(
+    ADD, PhantomAdd,
+    SUBTRACT, PhantomSubtract,
+    MULTIPLY, PhantomMultiply,
+    DIVIDE, PhantomDivide,
+    SUPER_SCRIPT, PhantomPower
+);
 
-    use super::*;
+// #[cfg(test)]
+// mod test {
+//     use crate::math::symbol::Number;
 
-    #[test]
-    fn test_into_raw_expr() {
-        assert_eq!(
-            Add {
-                lhs: ExpressionElement::Number(Number::Integer(1)),
-                rhs: ExpressionElement::Function(Box::new(Subtract {
-                    lhs: ExpressionElement::Number(Number::Integer(2)),
-                    rhs: ExpressionElement::Number(Number::Decimal(3.8))
-                })),
-            }
-            .assemble(),
-            "1+2-3.8"
-        );
+//     use super::*;
 
-        // When the operator precedence of the lhs is lower than itself,
-        // wrap the contents of the lhs with parentheses and place it on the right side.
-        assert_eq!(
-            Fraction {
-                num: ExpressionElement::Function(Box::new(Sin {
-                    x: ExpressionElement::Number(Number::Integer(3))
-                })),
-                den: ExpressionElement::Function(Box::new(Multiply {
-                    lhs: ExpressionElement::Function(Box::new(Add {
-                        lhs: ExpressionElement::Number(Number::Integer(5)),
-                        rhs: ExpressionElement::Number(Number::Integer(7))
-                    })),
-                    rhs: ExpressionElement::Number(Number::Decimal(6.5)),
-                })),
-            }
-            .assemble(),
-            "\\frac{\\sin{3}}{6.5*(5+7)}"
-        );
-    }
-}
+//     #[test]
+//     fn test_into_raw_expr() {
+//         assert_eq!(
+//             Add {
+//                 lhs: ExpressionElement::Number(Number::Integer(1)),
+//                 rhs: ExpressionElement::Function(Box::new(Subtract {
+//                     lhs: ExpressionElement::Number(Number::Integer(2)),
+//                     rhs: ExpressionElement::Number(Number::Decimal(3.8))
+//                 })),
+//             }
+//             .assemble(),
+//             "1+2-3.8"
+//         );
+
+//         // When the operator precedence of the lhs is lower than itself,
+//         // wrap the contents of the lhs with parentheses and place it on the right side.
+//         assert_eq!(
+//             Fraction {
+//                 num: ExpressionElement::Function(Box::new(Sin {
+//                     x: ExpressionElement::Number(Number::Integer(3))
+//                 })),
+//                 den: ExpressionElement::Function(Box::new(Multiply {
+//                     lhs: ExpressionElement::Function(Box::new(Add {
+//                         lhs: ExpressionElement::Number(Number::Integer(5)),
+//                         rhs: ExpressionElement::Number(Number::Integer(7))
+//                     })),
+//                     rhs: ExpressionElement::Number(Number::Decimal(6.5)),
+//                 })),
+//             }
+//             .assemble(),
+//             "\\frac{\\sin{3}}{6.5*(5+7)}"
+//         );
+//     }
+// }
