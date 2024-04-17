@@ -16,7 +16,7 @@ impl FromRawExpr for ExpressionBuffer {
     fn parse_raw(expr: &str) -> LaTexParsingResult<Self> {
         let mut expr_buffer = Vec::new();
 
-        let mut digit_start = -1;
+        let mut number_start = -1;
         let mut func_sub_expr_start = -1;
         let mut func_sub_expr_start_depth = 0;
         let mut user_sub_expr_start = -1;
@@ -74,7 +74,7 @@ impl FromRawExpr for ExpressionBuffer {
 
             // Functions
             if func_def_start != -1 && c == CURLY_BRACKET_L {
-                expr_buffer.push(ExpressionElement::Function(MathFunction::Phantom(
+                expr_buffer.push(ExpressionElement::Function(
                     get_phantom_function(&expr[func_def_start as usize..i]).ok_or_else(|| {
                         LaTexParsingError::new(
                             func_def_start as u32 - 1,
@@ -83,8 +83,27 @@ impl FromRawExpr for ExpressionBuffer {
                             ),
                         )
                     })?,
-                )));
+                ));
                 func_def_start = -1;
+            }
+
+            if number_start != -1 {
+                if c.is_digit(10) || c == '.' {
+                    continue;
+                } else {
+                    // Real Numbers
+                    if let Some(scalar) = Number::parse_raw(&expr[number_start as usize..i]) {
+                        expr_buffer.push(ExpressionElement::Number(scalar));
+                        number_start = -1;
+                    } else {
+                        return Err(LaTexParsingError::new(
+                            i as u32,
+                            LaTexParsingErrorType::InvalidNumber(
+                                expr[number_start as usize..i].to_string(),
+                            ),
+                        ));
+                    }
+                }
             }
 
             if func_sub_expr_start != -1 || user_sub_expr_start != -1 || func_def_start != -1 {
@@ -108,9 +127,8 @@ impl FromRawExpr for ExpressionBuffer {
                 continue;
             }
 
-            // Digits
             if c.is_digit(10) || c == '.' {
-                digit_start = i as i32;
+                number_start = i as i32;
                 continue;
             }
 
@@ -118,14 +136,6 @@ impl FromRawExpr for ExpressionBuffer {
             if c.is_ascii_lowercase() {
                 todo!("parse custom variables");
                 // continue;
-            }
-
-            // Real Numbers
-            if digit_start != -1 {
-                if let Some(scalar) = Number::parse_raw(&expr[digit_start as usize..i]) {
-                    expr_buffer.push(ExpressionElement::Number(scalar));
-                    digit_start = -1;
-                }
             }
 
             // Operators
@@ -137,9 +147,9 @@ impl FromRawExpr for ExpressionBuffer {
                     expr_buffer.push(ExpressionElement::Number(Number::Integer(0)));
                 }
 
-                expr_buffer.push(ExpressionElement::Function(MathFunction::Phantom(
+                expr_buffer.push(ExpressionElement::Function(
                     get_phantom_function(c.to_string().as_str()).unwrap(),
-                )));
+                ));
                 continue;
             }
 
@@ -149,13 +159,13 @@ impl FromRawExpr for ExpressionBuffer {
             ));
         }
 
-        if digit_start != -1 {
-            if let Some(scalar) = Number::parse_raw(&expr[digit_start as usize..]) {
+        if number_start != -1 {
+            if let Some(scalar) = Number::parse_raw(&expr[number_start as usize..]) {
                 expr_buffer.push(ExpressionElement::Number(scalar));
             } else {
                 return Err(LaTexParsingError::new(
-                    digit_start as u32,
-                    LaTexParsingErrorType::InvalidNumber(expr[digit_start as usize..].to_string()),
+                    number_start as u32,
+                    LaTexParsingErrorType::InvalidNumber(expr[number_start as usize..].to_string()),
                 ));
             }
         }
@@ -175,11 +185,11 @@ impl IntoRawExpr for ExpressionBuffer {
 }
 
 #[derive(Debug)]
-pub struct LaTexExpression {
+pub struct ExpresssionTree {
     root: MathFunction,
 }
 
-impl FromRawExpr for LaTexExpression {
+impl FromRawExpr for ExpresssionTree {
     /// Full-featured LaTex parser.
     fn parse_raw(expr: &str) -> LaTexParsingResult<Self> {
         todo!()
@@ -192,13 +202,12 @@ mod test {
 
     #[test]
     fn test_expr_parser_simple() {
-        // assert_eq!(
-        //     ExpressionBuffer::parse_raw(r#"15*16+2-9^2/3^{19-(-5+1)+2.3}+(5.3+1)"#)
-        //         .unwrap()
-        //         .assemble(),
-        //     "15Multiply16Add2Subtract9Power2Divide3Power19Subtract0Subtract5Add1Add2.3Add5.3Add1"
-        // );
-        dbg!(ExpressionBuffer::parse_raw(r#"15*16+2-9^2/3^{19-(-5+1)+2.3}+(5.3+1)"#).unwrap());
+        assert_eq!(
+            ExpressionBuffer::parse_raw(r#"15*16+2-9^2/3^{19-(-5+1)+2.3}+(5.3+1)"#)
+                .unwrap()
+                .assemble(),
+            "15Multiply16Add2Subtract9Power2Divide3Power19Subtract0Subtract5Add1Add2.3Add5.3Add1"
+        );
     }
 
     #[test]

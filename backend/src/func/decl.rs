@@ -45,16 +45,12 @@ macro_rules! register_functions {
         #[derive(Debug)]
         pub enum MathFunction {
             $($fn_ident(Box<$fn_ty>),)*
-
-            Phantom(Box<dyn PhantomFunction>),
         }
 
         impl IntoRawExpr for MathFunction {
             fn assemble(&self) -> String {
                 match self {
                     $(Self::$fn_ident(f) => f.assemble(),)*
-
-                    Self::Phantom(f) => f.assemble(),
                 }
             }
         }

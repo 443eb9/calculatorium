@@ -1,6 +1,6 @@
 use crate::func::{
-    decl::{IntoRawExpr, MathFunction, Prioritizable},
-    Function,
+    decl::{IntoRawExpr, Prioritizable},
+    Function, PhantomFunction,
 };
 
 use self::{
@@ -37,7 +37,6 @@ pub enum LaTexParsingErrorType {
 #[derive(Debug)]
 pub enum MathElement {
     Number(Number),
-    Parentheses(BracketState),
     Function(Box<dyn Function>),
 }
 
@@ -45,7 +44,6 @@ impl IntoRawExpr for MathElement {
     fn assemble(&self) -> String {
         match self {
             MathElement::Number(n) => n.assemble(),
-            MathElement::Parentheses(n) => n.assemble(),
             MathElement::Function(n) => n.assemble(),
         }
     }
@@ -55,7 +53,6 @@ impl Prioritizable for MathElement {
     fn priority(&self) -> u32 {
         match self {
             MathElement::Number(_) => 1,
-            MathElement::Parentheses(_) => unreachable!(),
             MathElement::Function(f) => f.priority(),
         }
     }
@@ -65,7 +62,7 @@ impl Prioritizable for MathElement {
 pub enum ExpressionElement {
     Number(Number),
     Parentheses(BracketState),
-    Function(MathFunction),
+    Function(Box<dyn PhantomFunction>),
     Expression(ExpressionBuffer),
 }
 
