@@ -1,11 +1,9 @@
 use std::fmt::Debug;
 
 use crate::{
-    math::{ExpressionElement, MathElement},
+    math::{ExpressionElement, IntoRawExpr, MathElement, Prioritizable},
     DecimalScalar,
 };
-
-use self::decl::{IntoRawExpr, Prioritizable};
 
 pub mod decl;
 pub mod exp_log;

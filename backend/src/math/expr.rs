@@ -1,18 +1,13 @@
 use crate::{
     latex::*,
     math::{
-        func::decl::{get_phantom_function, get_phantom_operator, FromRawExpr},
-        symbol::{BracketState, Number},
+        func::decl::{get_phantom_function, get_phantom_operator},
+        symbol::{BracketState, Constant, Number},
+        ErrorLocation, ExpressionElement, FromRawExpr, Function, IntoRawExpr, LaTexParsingError,
+        LaTexParsingResult, MathElement, ParsingErrorType,
     },
     utils::BracketStack,
     DecimalScalar,
-};
-
-use super::{
-    func::{decl::IntoRawExpr, Function},
-    symbol::Constant,
-    ErrorLocation, ExpressionElement, LaTexParsingError, LaTexParsingResult, MathElement,
-    ParsingErrorType,
 };
 
 #[derive(Debug)]

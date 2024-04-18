@@ -1,8 +1,12 @@
-use crate::{math::MathElement, DecimalScalar};
-
-use super::{
-    decl::{Log, Power, Root},
-    Function, Operator,
+use crate::{
+    math::{
+        func::{
+            decl::{Log, Power, Root},
+            Function, Operator,
+        },
+        MathElement,
+    },
+    DecimalScalar,
 };
 
 impl Function for Root {

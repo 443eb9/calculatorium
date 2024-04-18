@@ -2,11 +2,9 @@ use std::fmt::Display;
 
 use crate::{
     latex::{E, PI},
-    math::func::decl::IntoRawExpr,
+    math::{func::Function, IntoRawExpr, MathElement},
     DecimalScalar, IntegerScalar,
 };
-
-use super::{func::Function, MathElement};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BracketState {

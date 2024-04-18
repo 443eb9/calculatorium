@@ -1,8 +1,12 @@
-use crate::{math::MathElement, DecimalScalar};
-
-use super::{
-    decl::{Cos, Sin, Tan},
-    Function,
+use crate::{
+    math::{
+        func::{
+            decl::{Cos, Sin, Tan},
+            Function,
+        },
+        MathElement,
+    },
+    DecimalScalar,
 };
 
 impl Function for Sin {

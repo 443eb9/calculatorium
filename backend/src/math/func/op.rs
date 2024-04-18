@@ -1,8 +1,12 @@
-use crate::{math::MathElement, DecimalScalar};
-
-use super::{
-    decl::{Add, Divide, Fraction, Multiply, Subtract},
-    Function, Operator,
+use crate::{
+    math::{
+        func::{
+            decl::{Add, Divide, Fraction, Multiply, Subtract},
+            Function, Operator,
+        },
+        MathElement,
+    },
+    DecimalScalar,
 };
 
 impl Operator for Add {}
