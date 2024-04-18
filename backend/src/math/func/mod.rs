@@ -1,6 +1,9 @@
 use std::fmt::Debug;
 
-use crate::math::{ExpressionElement, MathElement};
+use crate::{
+    math::{ExpressionElement, MathElement},
+    DecimalScalar,
+};
 
 use self::decl::{IntoRawExpr, Prioritizable};
 
@@ -18,12 +21,11 @@ pub trait PhantomFunction: Debug + Prioritizable {
 
 pub trait Function: Debug + IntoRawExpr {
     fn evaluate(&self) -> MathElement;
+    fn approximate(&self) -> DecimalScalar;
 }
 
 pub trait PhantomOperator: Debug + Prioritizable {
     fn solidify(&self, params: Vec<Option<ExpressionElement>>) -> Box<dyn Operator>;
 }
 
-pub trait Operator: Debug + IntoRawExpr + Prioritizable {
-    fn evaluate(&self) -> MathElement;
-}
+pub trait Operator: Debug + IntoRawExpr + Prioritizable + Function {}

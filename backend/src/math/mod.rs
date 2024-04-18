@@ -1,6 +1,9 @@
-use crate::math::func::{
-    decl::{IntoRawExpr, Prioritizable},
-    Function, Operator, PhantomFunction, PhantomOperator,
+use crate::{
+    math::func::{
+        decl::{IntoRawExpr, Prioritizable},
+        Function, Operator, PhantomFunction, PhantomOperator,
+    },
+    DecimalScalar,
 };
 
 use self::{
@@ -66,6 +69,20 @@ impl Prioritizable for ExpressionElement {
             ExpressionElement::Number(_) => 1,
             ExpressionElement::Operator(o) => o.priority(),
             ExpressionElement::Function(_) => 10,
+        }
+    }
+}
+
+impl Function for ExpressionElement {
+    fn evaluate(&self) -> MathElement {
+        todo!()
+    }
+
+    fn approximate(&self) -> DecimalScalar {
+        match self {
+            ExpressionElement::Number(n) => n.approximate(),
+            ExpressionElement::Operator(op) => op.approximate(),
+            ExpressionElement::Function(f) => f.approximate(),
         }
     }
 }

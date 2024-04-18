@@ -132,7 +132,7 @@ define_operator!(1, Add, ADD, lhs, rhs);
 define_operator!(1, Subtract, SUBTRACT, lhs, rhs);
 define_operator!(5, Multiply, MULTIPLY, lhs, rhs);
 define_operator!(5, Divide, DIVIDE, lhs, rhs);
-define_operator!(10, Power, SUPER_SCRIPT, exp, base);
+define_operator!(10, Power, SUPER_SCRIPT, base, exp);
 
 impl_into_raw_expr_op!(Add, ADD);
 impl_into_raw_expr_op!(Subtract, SUBTRACT);

@@ -4,6 +4,9 @@
 
 pub const FUNC_BEGIN: char = '\\';
 
+pub const PI: &str = "\\pi";
+pub const E: &str = "e";
+
 pub const PARENTHESES_L: char = '(';
 pub const PARENTHESES_R: char = ')';
 pub const SQUARE_BRACKET_L: char = '[';
@@ -23,8 +26,8 @@ pub const FRAC: &str = "frac";
 pub const ROOT: &str = "sqrt";
 
 pub const LOG: &str = "log_";
-pub const LG: &str = "lg_";
-pub const LN: &str = "ln_";
+pub const LG: &str = "lg";
+pub const LN: &str = "ln";
 
 pub const SIN: &str = "sin";
 pub const COS: &str = "cos";

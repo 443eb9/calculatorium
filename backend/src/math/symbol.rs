@@ -1,6 +1,12 @@
 use std::fmt::Display;
 
-use crate::{math::func::decl::IntoRawExpr, DecimalScalar, IntegerScalar};
+use crate::{
+    latex::{E, PI},
+    math::func::decl::IntoRawExpr,
+    DecimalScalar, IntegerScalar,
+};
+
+use super::{func::Function, MathElement};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BracketState {
@@ -32,11 +38,31 @@ impl Display for Constant {
     }
 }
 
+impl Function for Constant {
+    fn evaluate(&self) -> MathElement {
+        todo!()
+    }
+
+    fn approximate(&self) -> DecimalScalar {
+        match *self {
+            // TODO automatically adapt to the target accuracy
+            Constant::Pi => std::f64::consts::PI,
+            Constant::E => std::f64::consts::E,
+        }
+    }
+}
+
+impl IntoRawExpr for Constant {
+    fn assemble(&self) -> String {
+        todo!()
+    }
+}
+
 impl Constant {
     pub fn parse_raw(expr: &str) -> Option<Self> {
         match expr {
-            "\\pi" => Some(Self::Pi),
-            "e" => Some(Self::E),
+            PI => Some(Self::Pi),
+            E => Some(Self::E),
             _ => None,
         }
     }
@@ -48,6 +74,20 @@ pub enum Number {
     Decimal(DecimalScalar),
     Constant(Constant),
     // Virtual()
+}
+
+impl Function for Number {
+    fn evaluate(&self) -> super::MathElement {
+        todo!()
+    }
+
+    fn approximate(&self) -> DecimalScalar {
+        match *self {
+            Number::Integer(i) => i as DecimalScalar,
+            Number::Decimal(d) => d,
+            Number::Constant(c) => c.approximate(),
+        }
+    }
 }
 
 impl IntoRawExpr for Number {

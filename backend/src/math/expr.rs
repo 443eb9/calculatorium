@@ -5,11 +5,14 @@ use crate::{
         symbol::{BracketState, Number},
     },
     utils::BracketStack,
+    DecimalScalar,
 };
 
 use super::{
-    symbol::Constant, ErrorLocation, ExpressionElement, LaTexParsingError, LaTexParsingResult,
-    MathElement, ParsingErrorType,
+    func::{decl::IntoRawExpr, Function},
+    symbol::Constant,
+    ErrorLocation, ExpressionElement, LaTexParsingError, LaTexParsingResult, MathElement,
+    ParsingErrorType,
 };
 
 #[derive(Debug)]
@@ -346,6 +349,23 @@ impl FromRawExpr for ExpresssionTree {
     }
 }
 
+impl Function for ExpresssionTree {
+    fn evaluate(&self) -> MathElement {
+        todo!()
+    }
+
+    #[inline]
+    fn approximate(&self) -> DecimalScalar {
+        self.root.approximate()
+    }
+}
+
+impl IntoRawExpr for ExpresssionTree {
+    fn assemble(&self) -> String {
+        self.root.assemble()
+    }
+}
+
 impl ExpresssionTree {
     pub fn from_postfix(expr: Vec<MathElement>) -> LaTexParsingResult<Self> {
         if expr.is_empty() {
@@ -363,7 +383,8 @@ impl ExpresssionTree {
                 MathElement::Number(n) => tree_buffer.push(ExpressionElement::Number(n)),
                 MathElement::Function(f) => tree_buffer.push(ExpressionElement::Function(f)),
                 MathElement::PhantomOperator(pho) => {
-                    let params = vec![tree_buffer.pop(), tree_buffer.pop()];
+                    let mut params = vec![tree_buffer.pop(), tree_buffer.pop()];
+                    params.reverse();
                     tree_buffer.push(ExpressionElement::Operator(pho.solidify(params)));
                 }
                 // Only exists when the operator is `Power`
@@ -385,47 +406,31 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_expr_parser_simple() {
-        dbg!(ExpresssionTree::from_postfix(
-            ExpressionBuffer::parse_raw(r#"15*16+2-9^2/3^{19-(-5+1)+2.3}+(5.3+1)"#)
+    fn test_expr_approximation() {
+        assert_eq!(
+            ExpresssionTree::parse_raw(r#"15*16+2-9^2/3^{19-(-5+1)+2.3}+(5.3+1)"#)
                 .unwrap()
-                .to_postfix()
+                .approximate() as f32,
+            248.3
+        );
+        assert_eq!(
+            ExpresssionTree::parse_raw(r#"\sin{\sqrt[4]{3}}"#)
                 .unwrap()
-        )
-        .unwrap());
-    }
-
-    #[test]
-    fn test_expr_parser_func1() {
-        dbg!(ExpresssionTree::from_postfix(
-            ExpressionBuffer::parse_raw(r#"5+\frac{2^5+\frac{1}{2}+\sqrt{58}}{3}+5*3"#)
+                .approximate() as f32,
+            0.9677333034
+        );
+        assert_eq!(
+            ExpresssionTree::parse_raw(r#"5+\frac{2^5+\frac{1}{2}+\sqrt{58}}{3}+5*3"#)
                 .unwrap()
-                .to_postfix()
+                .approximate() as f32,
+            33.37192437
+        );
+        assert_eq!(
+            ExpresssionTree::parse_raw(r#"1/\frac{\lg{5}}{\log_{3}{8}}^5+\ln{\sqrt{2}}"#)
                 .unwrap()
-        )
-        .unwrap());
-    }
-
-    #[test]
-    fn test_expr_parser_func2() {
-        dbg!(ExpresssionTree::from_postfix(
-            ExpressionBuffer::parse_raw(r#"1/\frac{\lg_{5}}{\log_{3}{8}}^5+\ln_{\sqrt{2}}"#)
-                .unwrap()
-                .to_postfix()
-                .unwrap()
-        )
-        .unwrap());
-    }
-
-    #[test]
-    fn test_expr_parser_func3() {
-        dbg!(ExpresssionTree::from_postfix(
-            ExpressionBuffer::parse_raw(r#"\sin{\sqrt[4]{3}}"#)
-                .unwrap()
-                .to_postfix()
-                .unwrap()
-        )
-        .unwrap());
+                .approximate() as f32,
+            145.9657673
+        );
     }
 
     #[test]
