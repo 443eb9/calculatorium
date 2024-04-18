@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::{
     math::func::{Function, Operator, PhantomFunction, PhantomOperator},
     DecimalScalar,
@@ -59,6 +61,19 @@ impl LaTexParsingError {
     pub fn new(at: MathElementMeta, ty: LaTexParsingErrorType) -> Self {
         Self { at, ty }
     }
+
+    #[inline]
+    pub fn expand(&self, expr: &str) -> String {
+        if expr.is_empty() {
+            return format!("{}", self.ty);
+        }
+
+        format!(
+            "{} is a(an) {}",
+            &expr[self.at.start..self.at.start + self.at.len],
+            self.ty
+        )
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -70,6 +85,20 @@ pub enum LaTexParsingErrorType {
     InvalidFunctionCall,
     UnknownCharacter,
     Unknown,
+}
+
+impl Display for LaTexParsingErrorType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            LaTexParsingErrorType::EmptyInput => "empty input",
+            LaTexParsingErrorType::InvalidNumber => "invalid number",
+            LaTexParsingErrorType::InvalidBracketStructure => "invalid bracket structure",
+            LaTexParsingErrorType::UnknownFunctionName => "unknown function name",
+            LaTexParsingErrorType::InvalidFunctionCall => "invalid function call",
+            LaTexParsingErrorType::UnknownCharacter => "unknown character",
+            LaTexParsingErrorType::Unknown => "unknown error",
+        })
+    }
 }
 
 #[derive(Debug)]

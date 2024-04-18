@@ -5,3 +5,7 @@ edition = "2021"
 
 [dependencies]
 calculatorium_macros = { path = "macros", version = "0.1" }
+
+[[example]]
+name = "basic"
+path = "examples/basic.rs"
