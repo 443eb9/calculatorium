@@ -1,4 +1,5 @@
 pub mod api;
+pub mod calculator;
 pub mod latex;
 pub mod math;
 pub mod utils;

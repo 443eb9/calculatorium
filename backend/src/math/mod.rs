@@ -27,14 +27,9 @@ pub trait FromRawExpr {
     where
         Self: Sized,
     {
-        Self::parse_raw(expr).map_err(|e| {
-            LaTexParsingError::new(
-                match e.at {
-                    ErrorLocation::Raw(i) => ErrorLocation::Raw(i + base),
-                    ErrorLocation::Tokenized(i) => ErrorLocation::Tokenized(i + base),
-                },
-                e.ty,
-            )
+        Self::parse_raw(expr).map_err(|mut e| {
+            e.at.start += base as usize;
+            e
         })
     }
 }
@@ -53,32 +48,27 @@ pub trait Prioritizable {
 
 pub type LaTexParsingResult<T> = Result<T, LaTexParsingError>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ErrorLocation {
-    Raw(u32),
-    Tokenized(u32),
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LaTexParsingError {
-    pub at: ErrorLocation,
-    pub ty: ParsingErrorType,
+    pub at: MathElementMeta,
+    pub ty: LaTexParsingErrorType,
 }
 
 impl LaTexParsingError {
     #[inline]
-    pub fn new(at: ErrorLocation, ty: ParsingErrorType) -> Self {
+    pub fn new(at: MathElementMeta, ty: LaTexParsingErrorType) -> Self {
         Self { at, ty }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ParsingErrorType {
+pub enum LaTexParsingErrorType {
     EmptyInput,
-    InvalidNumber(String),
+    InvalidNumber,
     InvalidBracketStructure,
-    InvalidFunctionName(String),
-    InvalidFunctionInvocation(String),
+    UnknownFunctionName,
+    InvalidFunctionCall,
+    UnknownCharacter,
     Unknown,
 }
 
@@ -132,4 +122,29 @@ pub enum MathElement {
     PhantomFunction(Box<dyn PhantomFunction>),
     PhantomOperator(Box<dyn PhantomOperator>),
     Expression(ExpressionBuffer),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MathElementMeta {
+    pub start: usize,
+    pub len: usize,
+}
+
+impl MathElementMeta {
+    pub fn new(start: usize, len: usize) -> Self {
+        Self { start, len }
+    }
+
+    pub fn at(at: usize) -> Self {
+        Self { start: at, len: 1 }
+    }
+}
+
+impl From<std::ops::Range<usize>> for MathElementMeta {
+    fn from(value: std::ops::Range<usize>) -> Self {
+        Self {
+            start: value.start,
+            len: value.len(),
+        }
+    }
 }
