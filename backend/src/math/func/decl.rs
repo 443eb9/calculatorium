@@ -109,6 +109,23 @@ define_function!(Log, LOG, base, anti);
 define_function!(Sin, SIN, x);
 define_function!(Cos, COS, x);
 define_function!(Tan, TAN, x);
+define_function!(Cot, COT, x);
+define_function!(Sec, SEC, x);
+define_function!(Csc, CSC, x);
+
+define_function!(Arcsin, ARCSIN, x);
+define_function!(Arccos, ARCCOS, x);
+define_function!(Arctan, ARCTAN, x);
+define_function!(Arccot, ARCCOT, x);
+define_function!(Arcsec, ARCSEC, x);
+define_function!(Arccsc, ARCCSC, x);
+
+define_function!(Sinh, SIN, x);
+define_function!(Cosh, COS, x);
+define_function!(Tanh, TAN, x);
+define_function!(Coth, COT, x);
+define_function!(Sech, SEC, x);
+define_function!(Csch, CSC, x);
 
 #[rustfmt::skip]
 register_phantom_functions!(

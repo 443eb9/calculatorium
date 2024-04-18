@@ -3,6 +3,7 @@
 //! `&str`s are functions while `char`s are not.
 
 pub const FUNC_BEGIN: char = '\\';
+pub const WHITESPACE: char = ' ';
 
 pub const PI: &str = "\\pi";
 pub const E: &str = "e";
@@ -32,3 +33,20 @@ pub const LN: &str = "ln";
 pub const SIN: &str = "sin";
 pub const COS: &str = "cos";
 pub const TAN: &str = "tan";
+pub const COT: &str = "cot";
+pub const SEC: &str = "sec";
+pub const CSC: &str = "csc";
+
+pub const ARCSIN: &str = "arcsin";
+pub const ARCCOS: &str = "arccos";
+pub const ARCTAN: &str = "arctan";
+pub const ARCCOT: &str = "arccot";
+pub const ARCSEC: &str = "arcsec";
+pub const ARCCSC: &str = "arccsc";
+
+pub const SINH: &str = "sinh";
+pub const COSH: &str = "cosh";
+pub const TANH: &str = "tanh";
+pub const COTH: &str = "coth";
+pub const SECH: &str = "sech";
+pub const CSCH: &str = "csch";

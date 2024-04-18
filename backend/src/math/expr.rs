@@ -25,12 +25,19 @@ impl FromRawExpr for ExpressionBuffer {
         }
 
         let mut expr_buffer = Vec::new();
+        let mut univariate_funcs = Vec::new();
 
+        // The start index of a number: 23, 2.3
         let mut number_start = -1;
-        let mut func_sub_expr_start = -1;
-        let mut func_sub_expr_start_depth = 0;
-        let mut user_sub_expr_start = -1;
-        let mut user_sub_expr_start_depth = 0;
+        // The start index of a function subexpression, without the start curly bracket
+        let mut func_subexpr_start = -1;
+        // The depth of a function subexpression
+        let mut func_subexpr_start_depth = 0;
+        // The start index of a user-defined subexpression, without the start parenthese
+        let mut user_subexpr_start = -1;
+        // The depth of a user-defined subexpression
+        let mut user_subexpr_start_depth = 0;
+        // The start index of a function definition
         let mut func_def_start = -1;
 
         let mut curly_brackets = BracketStack::default();
@@ -52,41 +59,43 @@ impl FromRawExpr for ExpressionBuffer {
                 ));
             }
 
-            // Function Sub Expressions
-            if func_sub_expr_start != -1
-                && c == CURLY_BRACKET_R
-                && curly_brackets.depth() == func_sub_expr_start_depth
+            // Function Subexpressions
+            if func_subexpr_start != -1
+                && ((c == CURLY_BRACKET_R && curly_brackets.depth() == func_subexpr_start_depth)
+                    || c == WHITESPACE)
             {
-                expr_buffer.push(MathElement::Expression(
+                expr_buffer.push(Some(MathElement::Expression(
                     ExpressionBuffer::parse_raw_with_base_index(
-                        &expr[func_sub_expr_start as usize..i],
-                        func_sub_expr_start as u32,
+                        &expr[func_subexpr_start as usize..i],
+                        func_subexpr_start as u32,
                     )?,
-                ));
-                func_sub_expr_start = -1;
+                )));
+                func_subexpr_start = -1;
                 continue;
             }
 
-            // User Sub Expressions
-            if user_sub_expr_start != -1
+            // User Subexpressions
+            if user_subexpr_start != -1
                 && c == PARENTHESES_R
-                && parentheses.depth() == user_sub_expr_start_depth
+                && parentheses.depth() == user_subexpr_start_depth
             {
-                expr_buffer.push(MathElement::Parentheses(BracketState::Open));
+                expr_buffer.push(Some(MathElement::Parentheses(BracketState::Open)));
                 expr_buffer.extend(
                     ExpressionBuffer::parse_raw_with_base_index(
-                        &expr[user_sub_expr_start as usize..i],
-                        user_sub_expr_start as u32,
+                        &expr[user_subexpr_start as usize..i],
+                        user_subexpr_start as u32,
                     )?
-                    .expr,
+                    .expr
+                    .into_iter()
+                    .map(|e| Some(e)),
                 );
-                expr_buffer.push(MathElement::Parentheses(BracketState::Close));
-                user_sub_expr_start = -1;
+                expr_buffer.push(Some(MathElement::Parentheses(BracketState::Close)));
+                user_subexpr_start = -1;
                 continue;
             }
 
             // Functions
-            if func_def_start != -1 && c == CURLY_BRACKET_L {
+            if func_def_start != -1 && (c == CURLY_BRACKET_L || c == WHITESPACE) {
                 let mut f_name = &expr[func_def_start as usize..i];
                 let mut optional_param = handle_optional_params(f_name);
 
@@ -111,20 +120,25 @@ impl FromRawExpr for ExpressionBuffer {
                     )
                 })?;
 
-                expr_buffer.push(MathElement::PhantomFunction(f));
+                expr_buffer.push(Some(MathElement::PhantomFunction(f)));
                 if let Some(opt) = optional_param {
-                    expr_buffer.push(MathElement::Expression(ExpressionBuffer {
+                    expr_buffer.push(Some(MathElement::Expression(ExpressionBuffer {
                         expr: vec![MathElement::Number(opt)],
-                    }));
+                    })));
                 }
                 func_def_start = -1;
+
+                if c == WHITESPACE {
+                    univariate_funcs.push(expr_buffer.len() - 1);
+                    continue;
+                }
             }
 
             if number_start != -1 {
                 if !(c.is_digit(10) || c == '.') {
                     // Real Numbers
                     if let Some(scalar) = Number::parse_raw(&expr[number_start as usize..i]) {
-                        expr_buffer.push(MathElement::Number(scalar));
+                        expr_buffer.push(Some(MathElement::Number(scalar)));
                         number_start = -1;
                     } else {
                         return Err(LaTexParsingError::new(
@@ -139,19 +153,19 @@ impl FromRawExpr for ExpressionBuffer {
                 }
             }
 
-            if func_sub_expr_start != -1 || user_sub_expr_start != -1 || func_def_start != -1 {
+            if func_subexpr_start != -1 || user_subexpr_start != -1 || func_def_start != -1 {
                 continue;
             }
 
             if c == CURLY_BRACKET_L {
-                func_sub_expr_start = i as i32 + 1;
-                func_sub_expr_start_depth = curly_brackets.depth() - 1;
+                func_subexpr_start = i as i32 + 1;
+                func_subexpr_start_depth = curly_brackets.depth() - 1;
                 continue;
             }
 
             if c == PARENTHESES_L {
-                user_sub_expr_start = i as i32 + 1;
-                user_sub_expr_start_depth = parentheses.depth() - 1;
+                user_subexpr_start = i as i32 + 1;
+                user_subexpr_start_depth = parentheses.depth() - 1;
                 continue;
             }
 
@@ -179,12 +193,12 @@ impl FromRawExpr for ExpressionBuffer {
                 ADD | SUBTRACT | MULTIPLY | DIVIDE | SUPER_SCRIPT
             ) {
                 if matches!(c.to_string().as_str(), ADD | SUBTRACT) && expr_buffer.is_empty() {
-                    expr_buffer.push(MathElement::Number(Number::Integer(0)));
+                    expr_buffer.push(Some(MathElement::Number(Number::Integer(0))));
                 }
 
-                expr_buffer.push(MathElement::PhantomOperator(
+                expr_buffer.push(Some(MathElement::PhantomOperator(
                     get_phantom_operator(c.to_string().as_str()).unwrap(),
-                ));
+                )));
                 continue;
             }
 
@@ -196,7 +210,7 @@ impl FromRawExpr for ExpressionBuffer {
 
         if number_start != -1 {
             if let Some(scalar) = Number::parse_raw(&expr[number_start as usize..]) {
-                expr_buffer.push(MathElement::Number(scalar));
+                expr_buffer.push(Some(MathElement::Number(scalar)));
             } else {
                 return Err(LaTexParsingError::new(
                     ErrorLocation::Raw(number_start as u32),
@@ -205,7 +219,50 @@ impl FromRawExpr for ExpressionBuffer {
             }
         }
 
-        Ok(Self { expr: expr_buffer })
+        // Handle univariate functions
+        univariate_funcs.into_iter().for_each(|fn_idx| {
+            let param = expr_buffer[fn_idx + 1].as_ref().unwrap();
+            match param {
+                MathElement::Parentheses(p) => {
+                    let mut j = fn_idx + 2;
+                    let mut stack = BracketStack::default();
+                    stack.push(*p);
+                    expr_buffer[fn_idx + 1].take();
+
+                    loop {
+                        if let Some(MathElement::Parentheses(p)) = expr_buffer[j] {
+                            stack.push(p);
+                            if stack.depth() == 0 {
+                                expr_buffer[j].take();
+                                break;
+                            }
+                        }
+                        j += 1;
+                    }
+
+                    expr_buffer[fn_idx + 1] = Some(MathElement::Expression(ExpressionBuffer {
+                        expr: expr_buffer[fn_idx + 2..j]
+                            .iter_mut()
+                            .map(|e| e.take().unwrap())
+                            .collect(),
+                    }));
+                }
+                MathElement::PhantomFunction(phf) => {
+                    let n = phf.num_params() as usize;
+                    expr_buffer[fn_idx + 1] = Some(MathElement::Expression(ExpressionBuffer {
+                        expr: expr_buffer[fn_idx + 1..fn_idx + 2 + n]
+                            .iter_mut()
+                            .map(|e| e.take().unwrap())
+                            .collect(),
+                    }))
+                }
+                _ => {}
+            }
+        });
+
+        Ok(Self {
+            expr: expr_buffer.into_iter().filter_map(|e| e).collect(),
+        })
     }
 }
 
@@ -219,7 +276,7 @@ fn handle_optional_params(f_name: &str) -> Option<Number> {
 }
 
 impl ExpressionBuffer {
-    pub fn to_postfix(self) -> LaTexParsingResult<Vec<MathElement>> {
+    fn to_postfix(self) -> LaTexParsingResult<Vec<MathElement>> {
         if self.expr.is_empty() {
             return Err(LaTexParsingError::new(
                 ErrorLocation::Tokenized(0),
@@ -362,7 +419,7 @@ impl IntoRawExpr for ExpresssionTree {
 }
 
 impl ExpresssionTree {
-    pub fn from_postfix(expr: Vec<MathElement>) -> LaTexParsingResult<Self> {
+    fn from_postfix(expr: Vec<MathElement>) -> LaTexParsingResult<Self> {
         if expr.is_empty() {
             return Err(LaTexParsingError::new(
                 ErrorLocation::Tokenized(0),
@@ -399,6 +456,22 @@ impl ExpresssionTree {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn test_univariate_funcs() {
+        assert_eq!(
+            ExpresssionTree::parse_raw(r#"\sin \frac{4}{7}"#)
+                .unwrap()
+                .approximate() as f32,
+            0.5408342134
+        );
+        assert_eq!(
+            ExpresssionTree::parse_raw(r#"\cos (5-1)*2"#)
+                .unwrap()
+                .approximate() as f32,
+            -1.307287242
+        );
+    }
 
     #[test]
     fn test_expr_approximation() {

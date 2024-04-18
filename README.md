@@ -8,13 +8,14 @@ A cross-platform scientific calculator written in Rust(Backend and Handwriting r
 
 - [ ] Full-featured LaTex Expression Parser
 - [ ] Expression Evaluator
+  - [x] Approximation
   - [ ] Real Numbers
   - [ ] Complex Numbers
   - [ ] Matrices and Vectors
   - [ ] Calculus
 - [ ] Custom Variables
 - [ ] Custom Functions
-- [ ] GPU Accelerated Matrix Calculation
+- [ ] Parallel Matrix Calculation
 - [ ] Polynomial Simplification
 - [ ] Statistics Calculation
 - [ ] Unit Conversion

@@ -7,7 +7,9 @@ use crate::{
 
 pub mod decl;
 pub mod exp_log;
+pub mod integ;
 pub mod op;
+pub mod sp;
 pub mod trig;
 
 pub trait AsPhantomFunction {}
