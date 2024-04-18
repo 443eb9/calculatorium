@@ -268,6 +268,8 @@ impl ExpressionBuffer {
                     buffer.push(MathElement::Function(phf.solidify(params)));
                 }
                 MathElement::PhantomOperator(pho) => buffer.push(MathElement::PhantomOperator(pho)),
+                // Only exists when the prior element is `Power`
+                MathElement::Expression(e) => buffer.push(MathElement::Expression(e)),
                 _ => {
                     return Err(LaTexParsingError::new(
                         ErrorLocation::Tokenized(i as u32),
@@ -316,6 +318,8 @@ impl ExpressionBuffer {
                         fn_stack.push(MathElement::PhantomOperator(pho));
                     }
                 }
+                // Only exists when the prior element is `Power`
+                MathElement::Expression(e) => num_stack.push(MathElement::Expression(e)),
                 _ => {
                     return Err(LaTexParsingError::new(
                         ErrorLocation::Tokenized(i as u32),
@@ -361,6 +365,10 @@ impl ExpresssionTree {
                 MathElement::PhantomOperator(pho) => {
                     let params = vec![tree_buffer.pop(), tree_buffer.pop()];
                     tree_buffer.push(ExpressionElement::Operator(pho.solidify(params)));
+                }
+                // Only exists when the operator is `Power`
+                MathElement::Expression(e) => {
+                    tree_buffer.push(ExpresssionTree::from_postfix(e.to_postfix()?)?.root)
                 }
                 _ => unreachable!(),
             }
