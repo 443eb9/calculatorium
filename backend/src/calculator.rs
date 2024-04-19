@@ -16,6 +16,7 @@ pub enum CalculationError {
 
 #[derive(Debug, Default)]
 pub struct Calculator {
+    expr: String,
     variables: HashMap<String, Number>,
 }
 
@@ -25,14 +26,26 @@ impl Calculator {
     }
 
     #[inline]
-    pub fn approximate(&self, expr: &str) -> CalculationResult<DecimalScalar> {
-        Ok(ExpresssionTree::parse_raw(expr)
-            .map_err(|e| CalculationError::Parsing(e))?
-            .approximate())
+    pub fn approximate(&self) -> CalculationResult<DecimalScalar> {
+        Ok(
+            ExpresssionTree::parse_raw(&self.expr, Some(&self.variables))
+                .map_err(|e| CalculationError::Parsing(e))?
+                .approximate(),
+        )
     }
 
     #[inline]
-    pub fn set_variable(&mut self, var: String, val: Number) {
+    pub fn set_expr(&mut self, expr: impl Into<String>) {
+        self.expr = expr.into()
+    }
+
+    #[inline]
+    pub fn get_expr(&self) -> &str {
+        &self.expr
+    }
+
+    #[inline]
+    pub fn set_variable(&mut self, var: impl Into<String>, val: Number) {
         self.variables.insert(var.into(), val);
     }
 

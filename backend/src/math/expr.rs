@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{
     latex::*,
     math::{
@@ -18,13 +20,16 @@ pub struct ExpressionBuffer {
 }
 
 impl FromRawExpr for ExpressionBuffer {
-    fn parse_raw(expr: &str) -> LaTexParsingResult<Self> {
+    fn parse_raw(expr: &str, vars: Option<&HashMap<String, Number>>) -> LaTexParsingResult<Self> {
         if expr.is_empty() {
             return Err(LaTexParsingError::new(
                 MathElementMeta::at(0),
                 LaTexParsingErrorType::EmptyInput,
             ));
         }
+
+        let default = HashMap::default();
+        let vars = vars.unwrap_or(&default);
 
         // The tokenized expression
         let mut expr_buffer = Vec::new();
@@ -33,6 +38,8 @@ impl FromRawExpr for ExpressionBuffer {
 
         // The start index of a number: 23, 2.3
         let mut number_start = -1;
+        // The start index of custom variables
+        let mut custom_var_start = -1;
         // The start index of a function subexpression, after the start curly bracket
         let mut func_subexpr_start = -1;
         // The depth of a function subexpression
@@ -70,6 +77,7 @@ impl FromRawExpr for ExpressionBuffer {
             {
                 let elem = MathElement::Expression(ExpressionBuffer::parse_raw_with_base_index(
                     &expr[func_subexpr_start as usize..i],
+                    Some(vars),
                     func_subexpr_start as u32,
                 )?);
                 let meta = Some((func_subexpr_start as usize..i).into());
@@ -92,6 +100,7 @@ impl FromRawExpr for ExpressionBuffer {
                 expr_buffer.extend(
                     ExpressionBuffer::parse_raw_with_base_index(
                         &expr[user_subexpr_start as usize..i],
+                        Some(vars),
                         user_subexpr_start as u32,
                     )?
                     .expr
@@ -211,8 +220,39 @@ impl FromRawExpr for ExpressionBuffer {
 
             // Custom Variables
             if c.is_ascii_lowercase() {
-                todo!("parse custom variables");
-                // continue;
+                if custom_var_start == -1 {
+                    custom_var_start = i as i32;
+                }
+
+                if let Some(val) = vars.get(&expr[custom_var_start as usize..i + 1]) {
+                    if !expr_buffer.is_empty()
+                        && expr_buffer.last().unwrap().as_ref().is_some_and(|(e, _)| {
+                            !matches!(
+                                e,
+                                MathElement::PhantomOperator(_) | MathElement::Parentheses(_)
+                            )
+                        })
+                    {
+                        expr_buffer.push(Some((
+                            MathElement::PhantomOperator(get_phantom_operator(MULTIPLY).unwrap()),
+                            None,
+                        )));
+                    }
+
+                    expr_buffer.push(Some((
+                        MathElement::Number(*val),
+                        Some((custom_var_start as usize..i + 1).into()),
+                    )));
+                    custom_var_start = -1;
+                }
+                continue;
+            }
+
+            if custom_var_start != -1 {
+                return Err(LaTexParsingError::new(
+                    (custom_var_start as usize..i).into(),
+                    LaTexParsingErrorType::UnknownVariable,
+                ));
             }
 
             // Operators
@@ -463,8 +503,8 @@ pub struct ExpresssionTree {
 }
 
 impl FromRawExpr for ExpresssionTree {
-    fn parse_raw(expr: &str) -> LaTexParsingResult<Self> {
-        ExpresssionTree::from_postfix(ExpressionBuffer::parse_raw(expr)?.to_postfix()?)
+    fn parse_raw(expr: &str, vars: Option<&HashMap<String, Number>>) -> LaTexParsingResult<Self> {
+        ExpresssionTree::from_postfix(ExpressionBuffer::parse_raw(expr, vars)?.to_postfix()?)
     }
 }
 
@@ -527,13 +567,13 @@ mod test {
     #[test]
     fn test_univariate_funcs() {
         assert_eq!(
-            ExpresssionTree::parse_raw(r#"\sin \frac{4}{7}"#)
+            ExpresssionTree::parse_raw(r#"\sin \frac{4}{7}"#, None)
                 .unwrap()
                 .approximate() as f32,
             0.5408342134
         );
         assert_eq!(
-            ExpresssionTree::parse_raw(r#"\cos (5-1)*2"#)
+            ExpresssionTree::parse_raw(r#"\cos (5-1)*2"#, None)
                 .unwrap()
                 .approximate() as f32,
             -1.307287242
@@ -543,25 +583,25 @@ mod test {
     #[test]
     fn test_expr_approximation() {
         assert_eq!(
-            ExpresssionTree::parse_raw(r#"15*16+2-9^2/3^{19-(-5+1)+2.3}+(5.3+1)"#)
+            ExpresssionTree::parse_raw(r#"15*16+2-9^2/3^{19-(-5+1)+2.3}+(5.3+1)"#, None)
                 .unwrap()
                 .approximate() as f32,
             248.3
         );
         assert_eq!(
-            ExpresssionTree::parse_raw(r#"\sin{\sqrt[4]{3}}"#)
+            ExpresssionTree::parse_raw(r#"\sin{\sqrt[4]{3}}"#, None)
                 .unwrap()
                 .approximate() as f32,
             0.9677333034
         );
         assert_eq!(
-            ExpresssionTree::parse_raw(r#"5+\frac{2^5+\frac{1}{2}+\sqrt{58}}{3}+5*3"#)
+            ExpresssionTree::parse_raw(r#"5+\frac{2^5+\frac{1}{2}+\sqrt{58}}{3}+5*3"#, None)
                 .unwrap()
                 .approximate() as f32,
             33.37192437
         );
         assert_eq!(
-            ExpresssionTree::parse_raw(r#"1/\frac{\lg{5}}{\log_{3}{8}}^5+\ln{\sqrt{2}}"#)
+            ExpresssionTree::parse_raw(r#"1/\frac{\lg{5}}{\log_{3}{8}}^5+\ln{\sqrt{2}}"#, None)
                 .unwrap()
                 .approximate() as f32,
             145.9657673
@@ -569,51 +609,82 @@ mod test {
     }
 
     #[test]
+    fn test_custom_vars() {
+        let map = HashMap::from([
+            ("x".to_string(), Number::Integer(6)),
+            ("another".to_string(), Number::Decimal(1.2)),
+        ]);
+
+        assert_eq!(
+            ExpresssionTree::parse_raw(r#"5+6x-another"#, Some(&map))
+                .unwrap()
+                .approximate() as f32,
+            39.8
+        );
+        assert_eq!(
+            ExpresssionTree::parse_raw(r#"1.2anotherx"#, Some(&map))
+                .unwrap()
+                .approximate() as f32,
+            8.64
+        );
+        assert_eq!(
+            ExpresssionTree::parse_raw(r#"xanother"#, Some(&map))
+                .unwrap()
+                .approximate() as f32,
+            7.2
+        );
+    }
+
+    #[test]
     fn test_parsing_err() {
         assert_eq!(
-            ExpresssionTree::parse_raw(r#""#).unwrap_err(),
+            ExpresssionTree::parse_raw(r#""#, None).unwrap_err(),
             LaTexParsingError::new(MathElementMeta::at(0), LaTexParsingErrorType::EmptyInput)
         );
         assert_eq!(
-            ExpresssionTree::parse_raw(r#"2_3*6"#).unwrap_err(),
+            ExpresssionTree::parse_raw(r#"2_3*6"#, None).unwrap_err(),
             LaTexParsingError::new(
                 MathElementMeta::at(1),
                 LaTexParsingErrorType::UnknownCharacter
             )
         );
         assert_eq!(
-            ExpresssionTree::parse_raw(r#"2-\frad{3}{4}"#).unwrap_err(),
+            ExpresssionTree::parse_raw(r#"2-\frad{3}{4}"#, None).unwrap_err(),
             LaTexParsingError::new((3..7).into(), LaTexParsingErrorType::UnknownFunctionName)
         );
         assert_eq!(
-            ExpresssionTree::parse_raw(r#"1+3.."#).unwrap_err(),
+            ExpresssionTree::parse_raw(r#"1+3.."#, None).unwrap_err(),
             LaTexParsingError::new((2..5).into(), LaTexParsingErrorType::InvalidNumber)
         );
         assert_eq!(
-            ExpresssionTree::parse_raw(r#"2+(5/0..9)"#).unwrap_err(),
+            ExpresssionTree::parse_raw(r#"2+(5/0..9)"#, None).unwrap_err(),
             LaTexParsingError::new((5..9).into(), LaTexParsingErrorType::InvalidNumber)
         );
         assert_eq!(
-            ExpresssionTree::parse_raw(r#"5+(2*(3-1)/2"#).unwrap_err(),
+            ExpresssionTree::parse_raw(r#"5+(2*(3-1)/2"#, None).unwrap_err(),
             LaTexParsingError::new(
                 MathElementMeta::at(11),
                 LaTexParsingErrorType::InvalidBracketStructure
             )
         );
         assert_eq!(
-            ExpresssionTree::parse_raw(r#"5+(2*2)-3-1)/2"#).unwrap_err(),
+            ExpresssionTree::parse_raw(r#"5+(2*2)-3-1)/2"#, None).unwrap_err(),
             LaTexParsingError::new(
                 MathElementMeta::at(11),
                 LaTexParsingErrorType::InvalidBracketStructure
             )
         );
         assert_eq!(
-            ExpresssionTree::parse_raw(r#"\sqrt[1..1]{5}"#).unwrap_err(),
+            ExpresssionTree::parse_raw(r#"\sqrt[1..1]{5}"#, None).unwrap_err(),
             LaTexParsingError::new((6..10).into(), LaTexParsingErrorType::InvalidNumber)
         );
         assert_eq!(
-            ExpresssionTree::parse_raw(r#"5+\log_{8}*7"#).unwrap_err(),
+            ExpresssionTree::parse_raw(r#"5+\log_{8}*7"#, None).unwrap_err(),
             LaTexParsingError::new((3..7).into(), LaTexParsingErrorType::InvalidFunctionCall)
+        );
+        assert_eq!(
+            ExpresssionTree::parse_raw(r#"1+random*5"#, None).unwrap_err(),
+            LaTexParsingError::new((2..8).into(), LaTexParsingErrorType::UnknownVariable)
         );
     }
 }

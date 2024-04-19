@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{collections::HashMap, fmt::Display};
 
 use crate::{
     math::func::{Function, Operator, PhantomFunction, PhantomOperator},
@@ -21,15 +21,19 @@ pub trait FromExpr {
 }
 
 pub trait FromRawExpr {
-    fn parse_raw(expr: &str) -> LaTexParsingResult<Self>
+    fn parse_raw(expr: &str, vars: Option<&HashMap<String, Number>>) -> LaTexParsingResult<Self>
     where
         Self: Sized;
 
-    fn parse_raw_with_base_index(expr: &str, base: u32) -> LaTexParsingResult<Self>
+    fn parse_raw_with_base_index(
+        expr: &str,
+        vars: Option<&HashMap<String, Number>>,
+        base: u32,
+    ) -> LaTexParsingResult<Self>
     where
         Self: Sized,
     {
-        Self::parse_raw(expr).map_err(|mut e| {
+        Self::parse_raw(expr, vars).map_err(|mut e| {
             e.at.start += base as usize;
             e
         })
@@ -84,20 +88,13 @@ pub enum LaTexParsingErrorType {
     UnknownFunctionName,
     InvalidFunctionCall,
     UnknownCharacter,
+    UnknownVariable,
     Unknown,
 }
 
 impl Display for LaTexParsingErrorType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
-            LaTexParsingErrorType::EmptyInput => "empty input",
-            LaTexParsingErrorType::InvalidNumber => "invalid number",
-            LaTexParsingErrorType::InvalidBracketStructure => "invalid bracket structure",
-            LaTexParsingErrorType::UnknownFunctionName => "unknown function name",
-            LaTexParsingErrorType::InvalidFunctionCall => "invalid function call",
-            LaTexParsingErrorType::UnknownCharacter => "unknown character",
-            LaTexParsingErrorType::Unknown => "unknown error",
-        })
+        f.write_str(&format!("{:?}", self))
     }
 }
 

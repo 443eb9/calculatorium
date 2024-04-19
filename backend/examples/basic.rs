@@ -15,10 +15,11 @@ fn main() {
             continue;
         }
 
+        calculator.set_expr(input);
         let now = std::time::SystemTime::now();
         println!("Start calculating the approximation of {}", input);
 
-        match calculator.approximate(&input) {
+        match calculator.approximate() {
             Ok(ok) => println!(
                 "Done (after {}s)! Expression ≈ \n{}",
                 now.elapsed().unwrap().as_secs_f32(),
