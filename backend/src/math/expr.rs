@@ -78,7 +78,7 @@ impl FromRawExpr for ExpressionBuffer {
                 let elem = MathElement::Expression(ExpressionBuffer::parse_raw_with_base_index(
                     &expr[func_subexpr_start as usize..i],
                     Some(vars),
-                    func_subexpr_start as u32,
+                    func_subexpr_start as usize,
                 )?);
                 let meta = Some((func_subexpr_start as usize..i).into());
                 expr_buffer.push(Some((elem, meta)));
@@ -101,7 +101,7 @@ impl FromRawExpr for ExpressionBuffer {
                     ExpressionBuffer::parse_raw_with_base_index(
                         &expr[user_subexpr_start as usize..i],
                         Some(vars),
-                        user_subexpr_start as u32,
+                        user_subexpr_start as usize,
                     )?
                     .expr
                     .into_iter()
@@ -130,14 +130,11 @@ impl FromRawExpr for ExpressionBuffer {
                     let glb_param_range = param_range.start + func_def_start as usize
                         ..param_range.end + func_def_start as usize;
 
-                    optional_param = Some(
-                        Number::parse_raw(&f_name[param_range.clone()]).ok_or_else(|| {
-                            LaTexParsingError::new(
-                                glb_param_range.clone().into(),
-                                LaTexParsingErrorType::InvalidNumber,
-                            )
-                        })?,
-                    );
+                    optional_param = Some(Number::parse_raw_with_base_index(
+                        &f_name[param_range.clone()],
+                        None,
+                        i,
+                    )?);
                     optional_param_meta = Some(glb_param_range.into());
                     meta = (func_def_start as usize..func_def_start as usize + ROOT.len()).into();
 
@@ -173,18 +170,15 @@ impl FromRawExpr for ExpressionBuffer {
             if number_start != -1 {
                 if !(c.is_digit(10) || c == '.') {
                     // Real Numbers
-                    if let Some(scalar) = Number::parse_raw(&expr[number_start as usize..i]) {
-                        expr_buffer.push(Some((
-                            MathElement::Number(scalar),
-                            Some((number_start as usize..i).into()),
-                        )));
-                        number_start = -1;
-                    } else {
-                        return Err(LaTexParsingError::new(
-                            (number_start as usize..i).into(),
-                            LaTexParsingErrorType::InvalidNumber,
-                        ));
-                    }
+                    expr_buffer.push(Some((
+                        MathElement::Number(Number::parse_raw_with_base_index(
+                            &expr[number_start as usize..i],
+                            None,
+                            i,
+                        )?),
+                        Some((number_start as usize..i).into()),
+                    )));
+                    number_start = -1;
                 } else {
                     continue;
                 }
@@ -284,17 +278,14 @@ impl FromRawExpr for ExpressionBuffer {
         }
 
         if number_start != -1 {
-            if let Some(scalar) = Number::parse_raw(&expr[number_start as usize..]) {
-                expr_buffer.push(Some((
-                    MathElement::Number(scalar),
-                    Some((number_start as usize..expr.len()).into()),
-                )));
-            } else {
-                return Err(LaTexParsingError::new(
-                    (number_start as usize..expr.len()).into(),
-                    LaTexParsingErrorType::InvalidNumber,
-                ));
-            }
+            expr_buffer.push(Some((
+                MathElement::Number(Number::parse_raw_with_base_index(
+                    &expr[number_start as usize..],
+                    None,
+                    number_start as usize,
+                )?),
+                Some((number_start as usize..expr.len()).into()),
+            )));
         }
 
         if curly_brackets.depth() != 0 || parentheses.depth() != 0 {

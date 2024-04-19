@@ -1,6 +1,6 @@
 use calculatorium_backend::{
     calculator::{CalculationError, Calculator},
-    math::{symbol::Number, IntoRawExpr},
+    math::{symbol::Number, FromRawExpr, IntoRawExpr},
 };
 
 fn main() {
@@ -48,7 +48,7 @@ fn handle_cmd(calc: &mut Calculator, input: &str) -> bool {
             if cmd.len() != 3 {
                 return false;
             }
-            if let Some(n) = Number::parse_raw(cmd[2]) {
+            if let Ok(n) = Number::parse_raw(cmd[2], None) {
                 calc.set_variable(cmd[1].to_string(), n);
                 println!("Set variable {} to {}", cmd[1], cmd[2]);
             }

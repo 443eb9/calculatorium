@@ -28,13 +28,13 @@ pub trait FromRawExpr {
     fn parse_raw_with_base_index(
         expr: &str,
         vars: Option<&HashMap<String, Number>>,
-        base: u32,
+        base: usize,
     ) -> LaTexParsingResult<Self>
     where
         Self: Sized,
     {
         Self::parse_raw(expr, vars).map_err(|mut e| {
-            e.at.start += base as usize;
+            e.at.start += base;
             e
         })
     }
@@ -84,6 +84,7 @@ impl LaTexParsingError {
 pub enum LaTexParsingErrorType {
     EmptyInput,
     InvalidNumber,
+    InvalidConstant,
     InvalidBracketStructure,
     UnknownFunctionName,
     InvalidFunctionCall,
