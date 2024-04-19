@@ -131,12 +131,29 @@ define_function!(Csch, CSC, x);
 register_phantom_functions!(
     FRAC, PhantomFraction,
     ROOT, PhantomRoot,
-    
+
     LOG | LG | LN, PhantomLog,
 
     SIN, PhantomSin,
     COS, PhantomCos,
-    TAN, PhantomTan
+    TAN, PhantomTan,
+    COT, PhantomCot,
+    SEC, PhantomSec,
+    CSC, PhantomCsc,
+
+    ARCSIN, PhantomArcsin,
+    ARCCOS, PhantomArccos,
+    ARCTAN, PhantomArctan,
+    ARCCOT, PhantomArccot,
+    ARCSEC, PhantomArcsec,
+    ARCCSC, PhantomArccsc,
+
+    SINH, PhantomSinh,
+    COSH, PhantomCosh,
+    TANH, PhantomTanh,
+    COTH, PhantomCoth,
+    SECH, PhantomSech,
+    CSCH, PhantomCsch
 );
 
 #[rustfmt::skip]
@@ -147,44 +164,3 @@ register_phantom_operators!(
     DIVIDE, PhantomDivide,
     SUPER_SCRIPT, PhantomPower
 );
-
-// #[cfg(test)]
-// mod test {
-//     use crate::math::symbol::Number;
-
-//     use super::*;
-
-//     #[test]
-//     fn test_into_raw_expr() {
-//         assert_eq!(
-//             Add {
-//                 lhs: ExpressionElement::Number(Number::Integer(1)),
-//                 rhs: ExpressionElement::Function(Box::new(Subtract {
-//                     lhs: ExpressionElement::Number(Number::Integer(2)),
-//                     rhs: ExpressionElement::Number(Number::Decimal(3.8))
-//                 })),
-//             }
-//             .assemble(),
-//             "1+2-3.8"
-//         );
-
-//         // When the operator precedence of the lhs is lower than itself,
-//         // wrap the contents of the lhs with parentheses and place it on the right side.
-//         assert_eq!(
-//             Fraction {
-//                 num: ExpressionElement::Function(Box::new(Sin {
-//                     x: ExpressionElement::Number(Number::Integer(3))
-//                 })),
-//                 den: ExpressionElement::Function(Box::new(Multiply {
-//                     lhs: ExpressionElement::Function(Box::new(Add {
-//                         lhs: ExpressionElement::Number(Number::Integer(5)),
-//                         rhs: ExpressionElement::Number(Number::Integer(7))
-//                     })),
-//                     rhs: ExpressionElement::Number(Number::Decimal(6.5)),
-//                 })),
-//             }
-//             .assemble(),
-//             "\\frac{\\sin{3}}{6.5*(5+7)}"
-//         );
-//     }
-// }
