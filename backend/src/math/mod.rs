@@ -1,12 +1,13 @@
 use std::{collections::HashMap, fmt::Display};
 
 use crate::{
-    math::func::{Function, Operator, PhantomFunction, PhantomOperator},
+    math::func::{Function, PhantomFunction, PhantomOperator},
     DecimalScalar,
 };
 
 use self::{
     expr::ExpressionBuffer,
+    func::decl::MathFunction,
     symbol::{BracketState, Number},
 };
 
@@ -102,15 +103,13 @@ impl Display for LaTexParsingErrorType {
 #[derive(Debug)]
 pub enum ExpressionElement {
     Number(Number),
-    Operator(Box<dyn Operator>),
-    Function(Box<dyn Function>),
+    Function(Box<MathFunction>),
 }
 
 impl IntoRawExpr for ExpressionElement {
     fn assemble(&self) -> String {
         match self {
             ExpressionElement::Number(n) => n.assemble(),
-            ExpressionElement::Operator(o) => o.assemble(),
             ExpressionElement::Function(n) => n.assemble(),
         }
     }
@@ -120,7 +119,6 @@ impl Prioritizable for ExpressionElement {
     fn priority(&self) -> u32 {
         match self {
             ExpressionElement::Number(_) => 1,
-            ExpressionElement::Operator(o) => o.priority(),
             ExpressionElement::Function(_) => 10,
         }
     }
@@ -134,7 +132,6 @@ impl Function for ExpressionElement {
     fn approximate(&self) -> DecimalScalar {
         match self {
             ExpressionElement::Number(n) => n.approximate(),
-            ExpressionElement::Operator(op) => op.approximate(),
             ExpressionElement::Function(f) => f.approximate(),
         }
     }
@@ -144,8 +141,7 @@ impl Function for ExpressionElement {
 pub enum MathElement {
     Number(Number),
     Parentheses(BracketState),
-    Function(Box<dyn Function>),
-    Operator(Box<dyn Operator>),
+    Function(MathFunction),
     PhantomFunction(Box<dyn PhantomFunction>),
     PhantomOperator(Box<dyn PhantomOperator>),
     Expression(ExpressionBuffer),

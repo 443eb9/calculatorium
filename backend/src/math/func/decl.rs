@@ -3,9 +3,10 @@ use std::fmt::Debug;
 use crate::{
     latex::*,
     math::{
-        ExpressionElement, FromExpr, Function, IntoRawExpr, Operator, PhantomFunction,
+        ExpressionElement, FromExpr, Function, IntoRawExpr, MathElement, PhantomFunction,
         PhantomOperator, Prioritizable,
     },
+    DecimalScalar,
 };
 
 use calculatorium_macros::{AsPhantomFunction, AsPhantomOperator, FromExpr, IntoRawExpr};
@@ -163,4 +164,66 @@ register_phantom_operators!(
     MULTIPLY, PhantomMultiply,
     DIVIDE, PhantomDivide,
     SUPER_SCRIPT, PhantomPower
+);
+
+macro_rules! define_math_enum {
+    ($enum_ty: ident, $($ident: ident, $ty: ty),*) => {
+        #[derive(Debug)]
+        pub enum $enum_ty {
+            $($ident($ty),)*
+        }
+
+        impl Function for $enum_ty {
+            fn evaluate(&self) -> MathElement {
+                match self {
+                    $($enum_ty::$ident(elem) => elem.evaluate(),)*
+                }
+            }
+
+            fn approximate(&self) -> DecimalScalar {
+                match self {
+                    $($enum_ty::$ident(elem) => elem.approximate(),)*
+                }
+            }
+        }
+
+        impl IntoRawExpr for $enum_ty {
+            fn assemble(&self) -> String {
+                match self {
+                    $($enum_ty::$ident(elem) => elem.assemble(),)*
+                }
+            }
+        }
+    };
+}
+
+#[rustfmt::skip]
+define_math_enum!(
+    MathFunction,
+    Add, Add,
+    Subtract, Subtract,
+    Multiply, Multiply,
+    Divide, Divide,
+    Power, Power,
+    Fraction, Fraction,
+    Root, Root,
+    Log, Log,
+    Sin, Sin,
+    Cos, Cos,
+    Tan, Tan,
+    Cot, Cot,
+    Sec, Sec,
+    Csc, Csc,
+    Arcsin, Arcsin,
+    Arccos, Arccos,
+    Arctan, Arctan,
+    Arccot, Arccot,
+    Arcsec, Arcsec,
+    Arccsc, Arccsc,
+    Sinh, Sinh,
+    Cosh, Cosh,
+    Tanh, Tanh,
+    Coth, Coth,
+    Sech, Sech,
+    Csch, Csch
 );

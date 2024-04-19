@@ -531,11 +531,13 @@ impl ExpresssionTree {
         while let Some(elem) = expr.pop() {
             match elem {
                 MathElement::Number(n) => tree_buffer.push(ExpressionElement::Number(n)),
-                MathElement::Function(f) => tree_buffer.push(ExpressionElement::Function(f)),
+                MathElement::Function(f) => {
+                    tree_buffer.push(ExpressionElement::Function(Box::new(f)))
+                }
                 MathElement::PhantomOperator(pho) => {
                     let mut params = vec![tree_buffer.pop(), tree_buffer.pop()];
                     params.reverse();
-                    tree_buffer.push(ExpressionElement::Operator(pho.solidify(params)));
+                    tree_buffer.push(ExpressionElement::Function(Box::new(pho.solidify(params))));
                 }
                 // Only exists when the operator is `Power`
                 MathElement::Expression(e) => {

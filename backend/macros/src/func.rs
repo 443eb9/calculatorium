@@ -97,8 +97,8 @@ pub fn expand_as_phantom_function_derive(input: syn::DeriveInput) -> proc_macro:
             }
 
             #[inline]
-            fn solidify(&self, params: Vec<Option<ExpressionElement>>) -> Box<dyn Function> {
-                Box::new(<#ty>::convert(params))
+            fn solidify(&self, params: Vec<Option<ExpressionElement>>) -> MathFunction {
+                MathFunction::#ty(<#ty>::convert(params))
             }
         }
 
@@ -141,8 +141,8 @@ pub fn expand_as_phantom_operator_derive(input: syn::DeriveInput) -> proc_macro:
 
         impl PhantomOperator for #phty {
             #[inline]
-            fn solidify(&self, params: Vec<Option<ExpressionElement>>) -> Box<dyn Operator> {
-                Box::new(<#ty>::convert(params))
+            fn solidify(&self, params: Vec<Option<ExpressionElement>>) -> MathFunction {
+                MathFunction::#ty(<#ty>::convert(params))
             }
         }
 
