@@ -4,7 +4,7 @@ use crate::{
         func::decl::{get_phantom_function, get_phantom_operator},
         symbol::{BracketState, Constant, Number},
         ExpressionElement, FromRawExpr, Function, IntoRawExpr, LaTexParsingError,
-        LaTexParsingResult, MathElement, LaTexParsingErrorType,
+        LaTexParsingErrorType, LaTexParsingResult, MathElement,
     },
     utils::BracketStack,
     DecimalScalar,
@@ -14,7 +14,7 @@ use super::MathElementMeta;
 
 #[derive(Debug)]
 pub struct ExpressionBuffer {
-    pub expr: Vec<(MathElement, Option<MathElementMeta>)>,
+    expr: Vec<(MathElement, Option<MathElementMeta>)>,
 }
 
 impl FromRawExpr for ExpressionBuffer {
@@ -117,16 +117,19 @@ impl FromRawExpr for ExpressionBuffer {
 
                 // Root has a optinal parameter that is wrapped around []
                 if f_name.starts_with(ROOT) && f_name != ROOT {
-                    let param_range = func_def_start as usize + ROOT.len() + 1..f_name.len();
+                    let param_range = ROOT.len() + 1..f_name.len() - 1;
+                    let glb_param_range = param_range.start + func_def_start as usize
+                        ..param_range.end + func_def_start as usize;
+
                     optional_param = Some(
                         Number::parse_raw(&f_name[param_range.clone()]).ok_or_else(|| {
                             LaTexParsingError::new(
-                                param_range.clone().into(),
+                                glb_param_range.clone().into(),
                                 LaTexParsingErrorType::InvalidNumber,
                             )
                         })?,
                     );
-                    optional_param_meta = Some(param_range.into());
+                    optional_param_meta = Some(glb_param_range.into());
                     meta = (func_def_start as usize..func_def_start as usize + ROOT.len()).into();
 
                     f_name = ROOT;
@@ -227,6 +230,10 @@ impl FromRawExpr for ExpressionBuffer {
                     ),
                     Some(MathElementMeta::at(i)),
                 )));
+                continue;
+            }
+
+            if c == WHITESPACE {
                 continue;
             }
 
@@ -569,7 +576,10 @@ mod test {
         );
         assert_eq!(
             ExpresssionTree::parse_raw(r#"2_3*6"#).unwrap_err(),
-            LaTexParsingError::new(MathElementMeta::at(1), LaTexParsingErrorType::UnknownCharacter)
+            LaTexParsingError::new(
+                MathElementMeta::at(1),
+                LaTexParsingErrorType::UnknownCharacter
+            )
         );
         assert_eq!(
             ExpresssionTree::parse_raw(r#"2-\frad{3}{4}"#).unwrap_err(),
